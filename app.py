@@ -683,9 +683,9 @@ def replay_loop():
                 socketio.emit('replay_ended', {})
                 break
             
-            # Sleep for 5 FPS playback (0.2 seconds per frame)
-            sleep_time = (1.0 / 5) / current_replay.get('speed', 1.0)
-            time.sleep(sleep_time)
+            # Minimal sleep to avoid overwhelming the connection
+            # Front-end will control frame rate for smoother playback
+            time.sleep(0.01)  # 10ms between frames = 100 FPS max, front-end limits to desired rate
             
         except Exception as e:
             print(f"❌ Error in replay loop: {e}")
