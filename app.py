@@ -683,9 +683,9 @@ def replay_loop():
                 socketio.emit('replay_ended', {})
                 break
             
-            # Minimal sleep to avoid overwhelming the connection
-            # Front-end will control frame rate for smoother playback
-            time.sleep(0.01)  # 10ms between frames = 100 FPS max, front-end limits to desired rate
+            # Slower sleep for cloud deployment to avoid WebSocket buffer buildup
+            # Railway has higher latency than local, so we need to slow down
+            time.sleep(0.1)  # 100ms between frames = 10 FPS max, front-end limits to 5 FPS
             
         except Exception as e:
             print(f"❌ Error in replay loop: {e}")
