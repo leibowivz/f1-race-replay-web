@@ -62,8 +62,8 @@ def load_race():
     """Load race data"""
     try:
         data = request.json
-        year = data.get('year')
-        round_number = data.get('round')
+        year = int(data.get('year'))
+        round_number = int(data.get('round'))
         session_type = data.get('session_type', 'R')
         
         print(f"Loading F1 {year} Round {round_number} Session '{session_type}'")
