@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Qualifying Results</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            color: white;
+            padding: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .results-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .segment-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px;
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .tab:hover {
+            background: #2a2a2a;
+        }
+        
+        .tab.active {
+            background: #667eea;
+            border-color: #667eea;
+        }
+        
+        .results-table {
+            background: #1a1a1a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .result-row {
+            display: grid;
+            grid-template-columns: 60px 80px 1fr 120px 120px 120px 100px;
+            padding: 12px 20px;
+            border-bottom: 1px solid #333;
+            align-items: center;
+        }
+        
+        .result-row:last-child {
+            border-bottom: none;
+        }
+        
+        .result-row.header {
+            background: #2a2a2a;
+            font-weight: 700;
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .result-row.eliminated {
+            opacity: 0.5;
+        }
+        
+        .pos {
+            font-weight: 700;
+            font-size: 18px;
+        }
+        
+        .driver-color {
+            width: 4px;
+            height: 40px;
+            border-radius: 2px;
+            margin-right: 10px;
+        }
+        
+        .driver-info {
+            display: flex;
+            align-items: center;
+        }
+        
+        .driver-code {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .time {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .time.fastest {
+            color: #a020f0;
+            font-weight: 700;
+        }
+        
+        .time.eliminated {
+            color: #666;
+        }
+        
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: #667eea;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        
+        .replay-btn {
+            padding: 6px 12px;
+            background: #667eea;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .replay-btn:hover {
+            background: #764ba2;
+        }
+        
+        .replay-btn:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Titillium Web', sans-serif;
+            background: #0d0d0d;
+        }
+        h1 {
+            font-weight: 900;
+            letter-spacing: 3px;
+            text-shadow: 0 0 20px rgba(180, 20, 20, 0.6);
+        }
+        .results-container {
+            background: rgba(20, 20, 20, 0.95);
+            padding: 30px;
+            border-radius: 12px;
+            border: 2px solid rgba(180, 20, 20, 0.4);
+        }
+        .tab {
+            background: rgba(30, 30, 30, 0.9);
+            border-color: rgba(180, 20, 20, 0.4);
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+        .tab.active {
+            background: linear-gradient(135deg, #b41414, #8b0000);
+            border-color: #b41414;
+        }
+        .results-table {
+            background: rgba(20, 20, 20, 0.95);
+        }
+        .result-row.header {
+            background: #b41414;
+            color: #fff;
+            font-weight: 900;
+            letter-spacing: 2px;
+        }
+        .result-row {
+            background: rgba(30, 30, 30, 0.9);
+        }
+        .result-row:hover {
+            background: rgba(40, 40, 40, 0.95);
+        }
+        .replay-btn {
+            background: linear-gradient(135deg, #b41414, #8b0000);
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .replay-btn:hover {
+            box-shadow: 0 0 15px rgba(180, 20, 20, 0.6);
+        }
+        .back-button {
+            background: linear-gradient(135deg, #b41414, #8b0000);
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-button">← Back</a>
+    
+    <h1 id="eventName">Qualifying Results</h1>
+    
+    <div class="results-container">
+        <div class="segment-tabs">
+            <div class="tab active" onclick="showSegment('all')">ALL</div>
+            <div class="tab" onclick="showSegment('Q1')">Q1</div>
+            <div class="tab" onclick="showSegment('Q2')">Q2</div>
+            <div class="tab" onclick="showSegment('Q3')">Q3</div>
+        </div>
+        
+        <div class="results-table" id="resultsTable">
+            <div class="result-row header">
+                <div>Pos</div>
+                <div></div>
+                <div>Driver</div>
+                <div>Q1</div>
+                <div>Q2</div>
+                <div>Q3</div>
+                <div>Replay</div>
+            </div>
+            <div id="resultsBody">Loading...</div>
+        </div>
+    </div>
+
+    <script>
+        let qualifyingData = [];
+        let currentSegment = 'all';
+        
+        // Load qualifying results from localStorage (set by main page)
+        const storedData = localStorage.getItem('qualifying_results');
+        if (storedData) {
+            const data = JSON.parse(storedData);
+            qualifyingData = data.results;
+            document.getElementById('eventName').textContent = data.event_name + ' - Qualifying';
+            renderResults();
+        }
+        
+        function showSegment(segment) {
+            currentSegment = segment;
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            renderResults();
+        }
+        
+        function renderResults() {
+            const tbody = document.getElementById('resultsBody');
+            tbody.innerHTML = '';
+            
+            qualifyingData.forEach((driver, index) => {
+                const isEliminated = 
+                    (currentSegment === 'Q2' && !driver.Q2) ||
+                    (currentSegment === 'Q3' && !driver.Q3);
+                
+                const row = document.createElement('div');
+                row.className = `result-row ${isEliminated ? 'eliminated' : ''}`;
+                
+                const color = `rgb(${driver.color[0]}, ${driver.color[1]}, ${driver.color[2]})`;
+                
+                row.innerHTML = `
+                    <div class="pos">${driver.position}</div>
+                    <div style="background: ${color}; width: 4px; height: 40px; border-radius: 2px;"></div>
+                    <div class="driver-code">${driver.code}</div>
+                    <div class="time ${driver.Q1 ? '' : 'eliminated'}">${formatTime(driver.Q1)}</div>
+                    <div class="time ${driver.Q2 ? (index < 10 ? 'fastest' : '') : 'eliminated'}">${formatTime(driver.Q2)}</div>
+                    <div class="time ${driver.Q3 ? (index < 3 ? 'fastest' : '') : 'eliminated'}">${formatTime(driver.Q3)}</div>
+                    <div>
+                        <button class="replay-btn" onclick="watchReplay('${driver.code}')" ${!driver.Q1 ? 'disabled' : ''}>
+                            ${driver.Q1 ? '▶ Watch' : '-'}
+                        </button>
+                    </div>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+        
+        function formatTime(seconds) {
+            if (!seconds) return '-';
+            const time = parseFloat(seconds);
+            const mins = Math.floor(time / 60);
+            const secs = (time % 60).toFixed(3);
+            return `${mins}:${secs.padStart(6, '0')}`;
+        }
+        
+        async function watchReplay(driverCode) {
+            // Store driver code and segment for viewer page
+            const storedData = localStorage.getItem('qualifying_results');
+            if (!storedData) return;
+            
+            const data = JSON.parse(storedData);
+            
+            // Determine which segment to show (prefer Q3, then Q2, then Q1)
+            const driver = qualifyingData.find(d => d.code === driverCode);
+            let segment = 'Q3';
+            let segmentName = 'Q3';
+            
+            if (driver.Q3) {
+                segment = 'Q3';
+                segmentName = 'Q3';
+            } else if (driver.Q2) {
+                segment = 'Q2';
+                segmentName = 'Q2';
+            } else if (driver.Q1) {
+                segment = 'Q1';
+                segmentName = 'Q1';
+            }
+            
+            localStorage.setItem('quali_replay', JSON.stringify({
+                year: data.year || 2024,
+                round: data.round || 1,
+                driver_code: driverCode,
+                segment: segment,
+                event_name: data.event_name + ` - ${driverCode} ${segmentName}`
+            }));
+            
+            // Redirect to qualifying viewer
+            window.location.href = '/viewer?mode=qualifying';
+        }
+    </script>
+</body>
+</html>

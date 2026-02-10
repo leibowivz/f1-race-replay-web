@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Race Replay</title>
+    <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Titillium Web', sans-serif;
+            background: #0d0d0d;
+            background-image: 
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,.03) 2px, rgba(255,255,255,.03) 4px),
+                linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(180,0,0,0.12) 0%, transparent 70%);
+            animation: pulse 8s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        
+        .container {
+            background: rgba(20, 20, 20, 0.95);
+            border-radius: 12px;
+            border: 2px solid rgba(180, 20, 20, 0.4);
+            box-shadow: 
+                0 0 40px rgba(180, 20, 20, 0.25),
+                0 20px 60px rgba(0,0,0,0.5),
+                inset 0 1px 0 rgba(255,255,255,0.1);
+            padding: 40px;
+            max-width: 520px;
+            width: 100%;
+            position: relative;
+            backdrop-filter: blur(10px);
+            z-index: 1;
+        }
+        
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                #b41414 20%, 
+                #cc2020 50%, 
+                #b41414 80%, 
+                transparent 100%);
+            animation: scan 3s linear infinite;
+        }
+        
+        @keyframes scan {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 35px;
+            position: relative;
+        }
+        
+        .logo {
+            font-size: 4em;
+            margin-bottom: 5px;
+            filter: drop-shadow(0 0 20px rgba(230,0,0,0.5));
+        }
+        
+        h1 {
+            color: #fff;
+            font-size: 2.5em;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-bottom: 8px;
+            text-shadow: 
+                0 0 20px rgba(180, 20, 20, 0.6),
+                2px 2px 4px rgba(0,0,0,0.8);
+        }
+        
+        .f1-red {
+            color: #cc2222;
+        }
+        
+        .subtitle {
+            color: #888;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-weight: 600;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            color: #bbb;
+            margin-bottom: 8px;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        
+        select {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(30, 30, 30, 0.8);
+            border: 1px solid rgba(180, 20, 20, 0.4);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 1em;
+            font-family: 'Titillium Web', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+        
+        select:hover {
+            border-color: rgba(180, 20, 20, 0.7);
+            background: rgba(40, 40, 40, 0.9);
+        }
+        
+        select:focus {
+            border-color: #b41414;
+            box-shadow: 0 0 0 3px rgba(180, 20, 20, 0.15);
+        }
+        
+        select:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        option {
+            background: #1a1a1a;
+            color: #fff;
+        }
+        
+        button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #b41414 0%, #8b0000 100%);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 1.1em;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 
+                0 4px 15px rgba(180, 20, 20, 0.5),
+                inset 0 1px 0 rgba(255,255,255,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 6px 20px rgba(180, 20, 20, 0.7),
+                inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background: #333;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        
+        button span {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .loading {
+            display: none;
+            margin-top: 25px;
+        }
+        
+        .progress-container {
+            background: rgba(30, 30, 30, 0.6);
+            border: 1px solid rgba(180, 20, 20, 0.4);
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        #loadingText {
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.95em;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #b41414 0%, #cc2020 50%, #b41414 100%);
+            background-size: 200% 100%;
+            width: 0%;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px rgba(180, 20, 20, 0.6);
+            animation: shimmer 2s linear infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        .loading-status {
+            font-size: 0.8em;
+            color: #888;
+            margin-top: 10px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .error {
+            background: rgba(180, 20, 20, 0.15);
+            border: 1px solid rgba(180, 20, 20, 0.6);
+            color: #ff8888;
+            padding: 14px;
+            border-radius: 6px;
+            margin-top: 20px;
+            display: none;
+            font-size: 0.9em;
+        }
+        
+        .speed-stripes {
+            position: absolute;
+            top: 50%;
+            right: -100px;
+            width: 400px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent 0%, rgba(180,20,20,0.4) 50%, transparent 100%);
+            transform: translateY(-50%) skewY(-45deg);
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🏎️</div>
+            <h1><span class="f1-red">F1</span> RACE REPLAY</h1>
+            <p class="subtitle">TELEMETRY ANALYSIS SYSTEM</p>
+        </div>
+        
+        <form id="raceForm">
+            <div class="form-group">
+                <label for="year">SEASON</label>
+                <select id="year" required>
+                    <option value="">SELECT YEAR...</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="round">RACE WEEKEND</label>
+                <select id="round" required disabled>
+                    <option value="">SELECT ROUND...</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="sessionType">SESSION TYPE</label>
+                <select id="sessionType" required>
+                    <option value="R">🏁 RACE</option>
+                    <option value="Q">⏱️ QUALIFYING</option>
+                    <option value="S">⚡ SPRINT</option>
+                </select>
+            </div>
+            
+            <button type="submit" id="loadBtn">
+                <span>🚀 LOAD SESSION</span>
+            </button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <div class="progress-container">
+                <p id="loadingText">Initializing telemetry system...</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="loading-status" id="loadingStatus">CONNECTING...</div>
+            </div>
+        </div>
+        
+        <div class="error" id="error"></div>
+        
+        <div class="speed-stripes"></div>
+    </div>
+
+    <script src="/static/index.js"></script>
+    <script>
+        // Use the same JavaScript as original index.html
+        const yearSelect = document.getElementById('year');
+        const roundSelect = document.getElementById('round');
+        const loadBtn = document.getElementById('loadBtn');
+        const loading = document.getElementById('loading');
+        const errorDiv = document.getElementById('error');
+
+        fetch('/api/years')
+            .then(r => r.json())
+            .then(years => {
+                years.reverse().forEach(year => {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = year;
+                    yearSelect.appendChild(option);
+                });
+            });
+
+        yearSelect.addEventListener('change', async () => {
+            const year = yearSelect.value;
+            if (!year) {
+                roundSelect.disabled = true;
+                roundSelect.innerHTML = '<option value="">SELECT ROUND...</option>';
+                return;
+            }
+
+            roundSelect.disabled = false;
+            roundSelect.innerHTML = '<option value="">LOADING...</option>';
+
+            try {
+                const response = await fetch(`/api/rounds/${year}`);
+                const rounds = await response.json();
+                
+                roundSelect.innerHTML = '<option value="">SELECT ROUND...</option>';
+                rounds.forEach(round => {
+                    const option = document.createElement('option');
+                    option.value = round.round;
+                    option.textContent = `R${round.round}: ${round.name.toUpperCase()}`;
+                    roundSelect.appendChild(option);
+                });
+            } catch (error) {
+                roundSelect.innerHTML = '<option value="">ERROR LOADING</option>';
+                console.error('Error loading rounds:', error);
+            }
+        });
+
+        document.getElementById('raceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const year = yearSelect.value;
+            const round = roundSelect.value;
+            const sessionType = document.getElementById('sessionType').value;
+
+            if (!year || !round) return;
+
+            loadBtn.disabled = true;
+            loading.style.display = 'block';
+            errorDiv.style.display = 'none';
+            
+            const progressBar = document.getElementById('progressFill');
+            const loadingText = document.getElementById('loadingText');
+            const loadingStatus = document.getElementById('loadingStatus');
+            
+            const steps = [
+                { time: 0, text: 'Connecting to F1 API...', progress: 5 },
+                { time: 2000, text: 'Loading session info...', progress: 15 },
+                { time: 5000, text: 'Fetching driver data...', progress: 30 },
+                { time: 10000, text: 'Processing telemetry...', progress: 50 },
+                { time: 20000, text: 'Building race frames...', progress: 70 },
+                { time: 35000, text: 'Extracting track data...', progress: 85 },
+                { time: 50000, text: 'Almost ready...', progress: 95 }
+            ];
+            
+            steps.forEach(step => {
+                setTimeout(() => {
+                    loadingText.textContent = step.text;
+                    progressBar.style.width = step.progress + '%';
+                    loadingStatus.textContent = `${step.progress}% COMPLETE`;
+                }, step.time);
+            });
+
+            try {
+                // Increased timeout for first-time race loading
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
+                
+                const response = await fetch('/api/load_race', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ year, round, session_type: sessionType }),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    throw new Error(`Server returned non-JSON response: ${text.substring(0, 200)}`);
+                }
+
+                const data = await response.json();
+
+                if (data.redirect) {
+                    localStorage.setItem('qualifying_results', JSON.stringify(data));
+                    progressBar.style.width = '100%';
+                    loadingText.textContent = '✅ QUALIFYING DATA LOADED!';
+                    loadingStatus.textContent = 'REDIRECTING...';
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 500);
+                } else if (data.success) {
+                    progressBar.style.width = '100%';
+                    loadingText.textContent = '✅ SESSION LOADED!';
+                    loadingStatus.textContent = 'LAUNCHING TELEMETRY VIEWER...';
+                    setTimeout(() => {
+                        window.location.href = '/viewer';
+                    }, 1500);
+                } else {
+                    throw new Error(data.error || 'Failed to load session');
+                }
+            } catch (error) {
+                console.error('Load error:', error);
+                
+                if (error.name === 'AbortError') {
+                    errorDiv.textContent = 'TIMEOUT: Session loading took too long (>2 min). The data may still be processing. Try again in 30 seconds.';
+                } else {
+                    errorDiv.textContent = `ERROR: ${error.message}`;
+                }
+                
+                errorDiv.style.display = 'block';
+                loading.style.display = 'none';
+                loadBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

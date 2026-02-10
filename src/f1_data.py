@@ -15,11 +15,15 @@ from src.lib.tyres import get_tyre_compound_int
 
 
 def enable_cache():
-    # Use /tmp for Railway (persistent across requests in same container)
-    cache_path = '/tmp/.fastf1-cache'
+    # Priority: CACHE_DIR env var > /tmp for Railway > local fallback
+    cache_path = os.getenv('CACHE_DIR')
+    
+    if not cache_path:
+        # Use /tmp for Railway (ephemeral) or Volume mount if configured
+        cache_path = '/tmp/.fastf1-cache'
     
     # Fallback to local if /tmp not available
-    if not os.path.exists('/tmp'):
+    if not cache_path.startswith('/') or not os.path.exists(os.path.dirname(cache_path)):
         try:
             settings = get_settings()
             cache_path = settings.cache_location

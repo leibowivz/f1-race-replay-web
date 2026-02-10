@@ -1,0 +1,136 @@
+/* F1 Theme Override for Viewer */
+@import url('https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&display=swap');
+
+body {
+    font-family: 'Titillium Web', sans-serif !important;
+    background: #0d0d0d !important;
+}
+
+#container {
+    background: #0d0d0d !important;
+}
+
+/* Top Banner - F1 Style */
+#sessionInfo {
+    background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%) !important;
+    border-bottom: 3px solid #b41414 !important;
+}
+
+#sessionInfo h1 {
+    font-weight: 900 !important;
+    letter-spacing: 3px !important;
+    text-shadow: 0 0 20px rgba(180, 20, 20, 0.6) !important;
+}
+
+#sessionInfo .event-details {
+    color: #cc2222 !important;
+    font-weight: 600 !important;
+}
+
+/* Sidebars */
+#leftSidebar, #rightSidebar {
+    background: rgba(20, 20, 20, 0.95) !important;
+    border-color: rgba(180, 20, 20, 0.4) !important;
+}
+
+.panel {
+    background: rgba(30, 30, 30, 0.8) !important;
+    border: 1px solid rgba(180, 20, 20, 0.4) !important;
+}
+
+.panel-title {
+    color: #cc2222 !important;
+    font-weight: 700 !important;
+    letter-spacing: 2px !important;
+}
+
+/* Leaderboard */
+.leaderboard-title {
+    background: linear-gradient(90deg, #b41414, #8b0000) !important;
+    font-weight: 900 !important;
+    letter-spacing: 3px !important;
+}
+
+.driver-row {
+    background: rgba(30, 30, 30, 0.9) !important;
+    border-left-width: 5px !important;
+    transition: all 0.2s !important;
+}
+
+.driver-row:hover {
+    background: rgba(40, 40, 40, 0.95) !important;
+    transform: translateX(5px) !important;
+}
+
+.driver-row.selected {
+    background: rgba(180, 20, 20, 0.25) !important;
+    border-left-color: #b41414 !important;
+}
+
+/* Controls */
+.control-btn {
+    background: rgba(40, 40, 40, 0.9) !important;
+    border: 1px solid rgba(180, 20, 20, 0.4) !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+}
+
+.control-btn:hover {
+    background: rgba(50, 50, 50, 0.95) !important;
+    border-color: #b41414 !important;
+    box-shadow: 0 0 15px rgba(180, 20, 20, 0.4) !important;
+}
+
+.control-btn.primary {
+    background: linear-gradient(135deg, #b41414, #8b0000) !important;
+    border-color: #b41414 !important;
+    box-shadow: 0 4px 15px rgba(180, 20, 20, 0.5) !important;
+}
+
+.control-btn.primary:hover {
+    box-shadow: 0 6px 20px rgba(180, 20, 20, 0.7) !important;
+}
+
+.speed-btn.active {
+    background: #b41414 !important;
+    border-color: #b41414 !important;
+}
+
+/* Progress Bar */
+#progressBar {
+    background: linear-gradient(90deg, #b41414, #cc2020, #b41414) !important;
+    box-shadow: 0 0 10px rgba(180, 20, 20, 0.6) !important;
+}
+
+#progressContainer {
+    background: rgba(20, 20, 20, 0.9) !important;
+    border: 1px solid rgba(180, 20, 20, 0.4) !important;
+}
+
+/* Bottom Bar */
+#bottomBar {
+    background: rgba(20, 20, 20, 0.95) !important;
+    border-top: 3px solid #b41414 !important;
+}
+
+/* Track Canvas */
+#track {
+    background: #1a1a1a !important;
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.5) !important;
+}
+
+/* Weather Panel */
+.weather-item {
+    background: rgba(40, 40, 40, 0.8) !important;
+    border: 1px solid rgba(180, 20, 20, 0.3) !important;
+}
+
+.weather-value {
+    color: #cc2222 !important;
+}
+
+/* Telemetry */
+.telemetry-row {
+    border-bottom-color: rgba(180, 20, 20, 0.3) !important;
+}

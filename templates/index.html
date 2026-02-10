@@ -96,6 +96,37 @@
             display: none;
         }
         
+        .progress-container {
+            width: 100%;
+            max-width: 500px;
+            margin: 15px auto;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        
+        .loading-status {
+            font-size: 13px;
+            color: #666;
+            margin-top: 8px;
+        }
+        
         .emoji {
             font-size: 3em;
             margin-bottom: 20px;
@@ -146,7 +177,13 @@
         </form>
         
         <div class="loading" id="loading">
-            <p>Loading race data... This may take a minute ⏱️</p>
+            <div class="progress-container">
+                <p id="loadingText">Preparing race data...</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="loading-status" id="loadingStatus">Initializing...</div>
+            </div>
         </div>
         
         <div class="error" id="error"></div>
@@ -211,9 +248,32 @@
             if (!year || !round) return;
 
             loadBtn.disabled = true;
-            loading.innerHTML = '<p>⏳ Loading F1 data from API... This takes 30-60 seconds (first time per race)</p>';
             loading.style.display = 'block';
             errorDiv.style.display = 'none';
+            
+            // Simulate progress for better UX
+            let progress = 0;
+            const progressBar = document.getElementById('progressFill');
+            const loadingText = document.getElementById('loadingText');
+            const loadingStatus = document.getElementById('loadingStatus');
+            
+            const steps = [
+                { time: 0, text: 'Connecting to F1 API...', progress: 5 },
+                { time: 2000, text: 'Loading session info...', progress: 15 },
+                { time: 5000, text: 'Fetching driver data...', progress: 30 },
+                { time: 10000, text: 'Processing telemetry...', progress: 50 },
+                { time: 20000, text: 'Building race frames...', progress: 70 },
+                { time: 35000, text: 'Extracting track data...', progress: 85 },
+                { time: 50000, text: 'Almost ready...', progress: 95 }
+            ];
+            
+            steps.forEach(step => {
+                setTimeout(() => {
+                    loadingText.textContent = step.text;
+                    progressBar.style.width = step.progress + '%';
+                    loadingStatus.textContent = `${step.progress}% complete`;
+                }, step.time);
+            });
 
             try {
                 const response = await fetch('/api/load_race', {
@@ -224,14 +284,25 @@
 
                 const data = await response.json();
 
-                if (data.success) {
-                    // Show success message and wait a bit before redirect
-                    loading.innerHTML = '<p style="color: #4caf50;">✅ Race data loaded! Redirecting to viewer...</p>';
-                    
-                    // Wait 2 seconds before redirect to ensure backend is ready
+                if (data.redirect) {
+                    // Qualifying mode
+                    localStorage.setItem('qualifying_results', JSON.stringify(data));
+                    progressBar.style.width = '100%';
+                    loadingText.textContent = '✅ Qualifying results loaded!';
+                    loadingText.style.color = '#4caf50';
+                    loadingStatus.textContent = 'Complete!';
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 500);
+                } else if (data.success) {
+                    // Race/Sprint mode
+                    progressBar.style.width = '100%';
+                    loadingText.textContent = '✅ Race data loaded!';
+                    loadingText.style.color = '#4caf50';
+                    loadingStatus.textContent = 'Redirecting to viewer...';
                     setTimeout(() => {
                         window.location.href = '/viewer';
-                    }, 2000);
+                    }, 1500);
                 } else {
                     throw new Error(data.error || 'Failed to load race');
                 }

@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Race Replay - Viewer</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link rel="stylesheet" href="/static/viewer-enhanced.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            overflow: hidden;
+        }
+        
+        #container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        #trackContainer {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #2a2a2a;
+        }
+        
+        #track {
+            border: 2px solid #444;
+            border-radius: 10px;
+        }
+        
+        #sidebar {
+            width: 350px;
+            background: #222;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        h2 {
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+        
+        #leaderboard {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .driver-row {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            margin-bottom: 5px;
+            background: #333;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .driver-row.out {
+            opacity: 0.5;
+        }
+        
+        .position {
+            font-weight: bold;
+            margin-right: 12px;
+            min-width: 25px;
+        }
+        
+        .driver-code {
+            font-weight: 600;
+            flex: 1;
+        }
+        
+        .driver-info {
+            font-size: 0.85em;
+            color: #aaa;
+        }
+        
+        #controls {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 15px;
+        }
+        
+        .control-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        #progress {
+            width: 100%;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            margin: 15px 0;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        #progressBar {
+            height: 100%;
+            background: #667eea;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.1s;
+        }
+        
+        #timeDisplay {
+            text-align: center;
+            font-size: 1.2em;
+            margin-top: 10px;
+            color: #aaa;
+        }
+        
+        .speed-indicator {
+            text-align: center;
+            margin-top: 10px;
+            color: #667eea;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="trackContainer">
+            <canvas id="track" width="800" height="600"></canvas>
+        </div>
+        
+        <div id="sidebar">
+            <h2>🏁 Race Control</h2>
+            
+            <div id="raceInfo">
+                <h3>📍 Race Event</h3>
+                <div class="event-name" id="eventName">Loading...</div>
+                <div class="lap-info" id="lapInfo">Lap 0 / 0</div>
+            </div>
+            
+            <div id="weatherPanel" class="weather-panel" style="display:none;">
+                <h3 style="margin-bottom: 10px;">🌤️ Weather</h3>
+                <div class="weather-grid">
+                    <div class="weather-item">
+                        <span class="weather-label">Track Temp</span>
+                        <span class="weather-value" id="weatherTrackTemp">--°C</span>
+                    </div>
+                    <div class="weather-item">
+                        <span class="weather-label">Air Temp</span>
+                        <span class="weather-value" id="weatherAirTemp">--°C</span>
+                    </div>
+                    <div class="weather-item">
+                        <span class="weather-label">Humidity</span>
+                        <span class="weather-value" id="weatherHumidity">--%</span>
+                    </div>
+                    <div class="weather-item">
+                        <span class="weather-label">Wind</span>
+                        <span class="weather-value" id="weatherWind">-- km/h</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="telemetryPanel" class="telemetry-panel" style="display:none;">
+                <h3 style="margin-bottom: 10px;">📊 Driver Telemetry</h3>
+                <div id="telemetryContent">
+                    <p style="color: #666;">Click a driver to view telemetry</p>
+                </div>
+            </div>
+            
+            <div id="leaderboard">
+                <h3 style="margin-bottom: 10px;">Leaderboard</h3>
+                <div id="leaderboardContent">
+                    <p style="color: #666;">Loading...</p>
+                </div>
+            </div>
+            
+            <div id="controls">
+                <h3 style="margin-bottom: 15px;">Controls</h3>
+                
+                <div class="control-row">
+                    <button id="playBtn" onclick="togglePlay()">▶️ Play</button>
+                    <button onclick="restart()">🔄 Restart</button>
+                </div>
+                
+                <div class="control-row">
+                    <button onclick="changeSpeed(0.5)">0.5x</button>
+                    <button onclick="changeSpeed(1.0)">1x</button>
+                    <button onclick="changeSpeed(2.0)">2x</button>
+                    <button onclick="changeSpeed(4.0)">4x</button>
+                </div>
+                
+                <div id="progress" onclick="seek(event)">
+                    <div id="progressBar"></div>
+                </div>
+                
+                <div id="timeDisplay">0:00 / 0:00</div>
+                <div class="speed-indicator">Speed: 1.0x</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('track');
+        const ctx = canvas.getContext('2d');
+        const socket = io();
+        
+        let isPlaying = false;
+        let currentSpeed = 1.0;
+        let totalFrames = 0;
+        let currentFrame = 0;
+        let drivers = [];
+        let trackBounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+        let trackPath = []; // Store all driver positions to draw track outline
+        let selectedDriver = null;
+        let eventName = '';
+        let currentLap = 1;
+        let totalLaps = 0;
+        let weatherData = null;
+        let trackData = null; // Complete track layout from qualifying lap
+        let drsZones = []; // DRS zones
+
+        socket.on('connect', () => {
+            console.log('✅ WebSocket connected to server');
+            // Request initial frame on connect
+            socket.emit('seek', { frame: 0 });
+        });
+
+        socket.on('disconnect', () => {
+            console.log('❌ WebSocket disconnected');
+        });
+
+        socket.on('error', (error) => {
+            console.error('Socket error:', error);
+        });
+
+        socket.on('frame_update', (data) => {
+            if (currentFrame % 100 === 0 || currentFrame === 0) {
+                console.log('📊 Frame update:', data.frame, '/', data.total_frames);
+            }
+            currentFrame = data.frame;
+            totalFrames = data.total_frames;
+            drivers = data.drivers;
+            
+            // Calculate track bounds dynamically if not set or if drivers have valid positions
+            if (drivers.length > 0) {
+                const xs = drivers.map(d => d.x).filter(x => x !== 0 && !isNaN(x));
+                const ys = drivers.map(d => d.y).filter(y => y !== 0 && !isNaN(y));
+                
+                if (xs.length > 0 && ys.length > 0) {
+                    // Only update bounds if we haven't set them yet, or expand them
+                    const newBounds = {
+                        minX: Math.min(...xs) - 500,
+                        maxX: Math.max(...xs) + 500,
+                        minY: Math.min(...ys) - 500,
+                        maxY: Math.max(...ys) + 500
+                    };
+                    
+                    // Initialize or expand bounds
+                    if (trackBounds.minX === 0 && trackBounds.maxX === 0) {
+                        trackBounds = newBounds;
+                    } else {
+                        trackBounds.minX = Math.min(trackBounds.minX, newBounds.minX);
+                        trackBounds.maxX = Math.max(trackBounds.maxX, newBounds.maxX);
+                        trackBounds.minY = Math.min(trackBounds.minY, newBounds.minY);
+                        trackBounds.maxY = Math.max(trackBounds.maxY, newBounds.maxY);
+                    }
+                }
+            }
+            
+            // Update weather if available
+            if (data.weather) {
+                weatherData = data.weather;
+                updateWeather();
+            }
+            
+            drawFrame();
+            updateLeaderboard();
+            if (selectedDriver) {
+                updateTelemetry();
+            }
+            updateProgress();
+        });
+        
+        function updateWeather() {
+            if (!weatherData) return;
+            
+            document.getElementById('weatherPanel').style.display = 'block';
+            document.getElementById('weatherTrackTemp').textContent = 
+                weatherData.track_temp ? `${Math.round(weatherData.track_temp)}°C` : '--°C';
+            document.getElementById('weatherAirTemp').textContent = 
+                weatherData.air_temp ? `${Math.round(weatherData.air_temp)}°C` : '--°C';
+            document.getElementById('weatherHumidity').textContent = 
+                weatherData.humidity ? `${Math.round(weatherData.humidity)}%` : '--%';
+            document.getElementById('weatherWind').textContent = 
+                weatherData.wind_speed ? `${Math.round(weatherData.wind_speed)} km/h` : '-- km/h';
+        }
+
+        socket.on('replay_ended', () => {
+            isPlaying = false;
+            document.getElementById('playBtn').textContent = '▶️ Play';
+        });
+
+        socket.on('initial_load_complete', (data) => {
+            console.log('Race loaded, total frames:', data.total_frames);
+            totalFrames = data.total_frames;
+            
+            // Update race info
+            if (data.event_name) {
+                eventName = data.event_name;
+                document.getElementById('eventName').textContent = eventName;
+            }
+            if (data.total_laps) {
+                totalLaps = data.total_laps;
+            }
+            
+            // Load track data
+            if (data.track_data) {
+                trackData = data.track_data;
+                console.log('✅ Track data loaded:', trackData.x.length, 'points');
+                
+                // Calculate track bounds
+                const xs = trackData.x.filter(x => !isNaN(x));
+                const ys = trackData.y.filter(y => !isNaN(y));
+                if (xs.length > 0 && ys.length > 0) {
+                    trackBounds = {
+                        minX: Math.min(...xs) - 500,
+                        maxX: Math.max(...xs) + 500,
+                        minY: Math.min(...ys) - 500,
+                        maxY: Math.max(...ys) + 500
+                    };
+                }
+                
+                // Extract DRS zones
+                extractDRSZones();
+            }
+            
+            // Request first frame
+            socket.emit('seek', { frame: 0 });
+        });
+        
+        function extractDRSZones() {
+            if (!trackData || !trackData.drs) return;
+            
+            drsZones = [];
+            let drsStart = null;
+            
+            for (let i = 0; i < trackData.drs.length; i++) {
+                const drs = trackData.drs[i];
+                // DRS active values: 10, 12, 14
+                if (drs === 10 || drs === 12 || drs === 14) {
+                    if (drsStart === null) {
+                        drsStart = i;
+                    }
+                } else {
+                    if (drsStart !== null) {
+                        drsZones.push({
+                            start: drsStart,
+                            end: i - 1
+                        });
+                        drsStart = null;
+                    }
+                }
+            }
+            
+            // Handle DRS zone at end
+            if (drsStart !== null) {
+                drsZones.push({
+                    start: drsStart,
+                    end: trackData.drs.length - 1
+                });
+            }
+            
+            console.log('✅ DRS zones found:', drsZones.length);
+        }
+
+        function drawFrame() {
+            // Clear canvas
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            if (drivers.length === 0) {
+                console.log('No drivers data');
+                return;
+            }
+            
+            // Build track path from driver positions
+            if (trackPath.length < 1000 && drivers.length > 0) {
+                drivers.forEach(driver => {
+                    if (driver.x !== 0 && driver.y !== 0) {
+                        trackPath.push({ x: driver.x, y: driver.y });
+                    }
+                });
+            }
+            
+            // Scale and translate coordinates to fit canvas
+            const scaleX = canvas.width / (trackBounds.maxX - trackBounds.minX);
+            const scaleY = canvas.height / (trackBounds.maxY - trackBounds.minY);
+            const scale = Math.min(scaleX, scaleY) * 0.85;
+            
+            function transformX(x) {
+                return (x - trackBounds.minX) * scale + (canvas.width - (trackBounds.maxX - trackBounds.minX) * scale) / 2;
+            }
+            
+            function transformY(y) {
+                return (y - trackBounds.minY) * scale + (canvas.height - (trackBounds.maxY - trackBounds.minY) * scale) / 2;
+            }
+            
+            // Draw complete track layout if available
+            if (trackData && trackData.x.length > 0) {
+                // Draw track center line
+                ctx.strokeStyle = '#555';
+                ctx.lineWidth = 30;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.globalAlpha = 0.4;
+                ctx.beginPath();
+                
+                for (let i = 0; i < trackData.x.length; i++) {
+                    const x = transformX(trackData.x[i]);
+                    const y = transformY(trackData.y[i]);
+                    
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.stroke();
+                ctx.globalAlpha = 1.0;
+                
+                // Draw DRS zones
+                drsZones.forEach(zone => {
+                    ctx.strokeStyle = '#00ff00';
+                    ctx.lineWidth = 35;
+                    ctx.globalAlpha = 0.3;
+                    ctx.beginPath();
+                    
+                    for (let i = zone.start; i <= zone.end && i < trackData.x.length; i++) {
+                        const x = transformX(trackData.x[i]);
+                        const y = transformY(trackData.y[i]);
+                        
+                        if (i === zone.start) {
+                            ctx.moveTo(x, y);
+                        } else {
+                            ctx.lineTo(x, y);
+                        }
+                    }
+                    ctx.stroke();
+                    ctx.globalAlpha = 1.0;
+                });
+                
+                // Draw finish line
+                if (trackData.x.length > 1) {
+                    const x0 = transformX(trackData.x[0]);
+                    const y0 = transformY(trackData.y[0]);
+                    const x1 = transformX(trackData.x[1]);
+                    const y1 = transformY(trackData.y[1]);
+                    
+                    // Perpendicular line
+                    const dx = x1 - x0;
+                    const dy = y1 - y0;
+                    const len = Math.sqrt(dx*dx + dy*dy);
+                    const nx = -dy / len * 30;
+                    const ny = dx / len * 30;
+                    
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 4;
+                    ctx.setLineDash([10, 10]);
+                    ctx.beginPath();
+                    ctx.moveTo(x0 - nx, y0 - ny);
+                    ctx.lineTo(x0 + nx, y0 + ny);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            } else if (trackPath.length > 50) {
+                // Fallback: draw from driver positions
+                ctx.strokeStyle = '#444';
+                ctx.lineWidth = 20;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.globalAlpha = 0.3;
+                ctx.beginPath();
+                
+                const step = Math.max(1, Math.floor(trackPath.length / 500));
+                for (let i = 0; i < trackPath.length; i += step) {
+                    const point = trackPath[i];
+                    const x = transformX(point.x);
+                    const y = transformY(point.y);
+                    
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.stroke();
+                ctx.globalAlpha = 1.0;
+            }
+            
+            // Draw drivers
+            drivers.forEach(driver => {
+                const x = transformX(driver.x);
+                const y = transformY(driver.y);
+                
+                const isSelected = selectedDriver === driver.code;
+                
+                // Draw larger circle for selected driver
+                if (isSelected) {
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 14, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                
+                // Draw driver dot
+                ctx.fillStyle = driver.is_out ? '#666' : driver.color;
+                ctx.beginPath();
+                ctx.arc(x, y, isSelected ? 10 : 8, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw driver code
+                ctx.fillStyle = isSelected ? '#ffff00' : 'white';
+                ctx.font = isSelected ? 'bold 12px sans-serif' : 'bold 10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(driver.code, x, y + (isSelected ? 25 : 20));
+            });
+        }
+
+        function updateLeaderboard() {
+            const content = document.getElementById('leaderboardContent');
+            
+            // Sort by position
+            const sorted = [...drivers].sort((a, b) => a.position - b.position);
+            
+            // Update lap info
+            if (sorted.length > 0) {
+                const leader = sorted[0];
+                currentLap = leader.lap;
+                document.getElementById('lapInfo').textContent = `Lap ${currentLap} / ${totalLaps || '?'}`;
+            }
+            
+            content.innerHTML = sorted.map(driver => `
+                <div class="driver-row ${driver.is_out ? 'out' : ''} ${selectedDriver === driver.code ? 'selected' : ''}" 
+                     style="border-left-color: ${driver.color}"
+                     onclick="selectDriver('${driver.code}')">
+                    <span class="position">${driver.position}</span>
+                    <span class="driver-code">${driver.code}</span>
+                    <span class="driver-info">
+                        Lap ${driver.lap} | ${Math.round(driver.speed)} km/h
+                        ${driver.is_out ? '| OUT' : ''}
+                    </span>
+                </div>
+            `).join('');
+        }
+        
+        function selectDriver(code) {
+            if (selectedDriver === code) {
+                selectedDriver = null;
+                document.getElementById('telemetryPanel').style.display = 'none';
+            } else {
+                selectedDriver = code;
+                updateTelemetry();
+                document.getElementById('telemetryPanel').style.display = 'block';
+            }
+            drawFrame();
+        }
+        
+        function updateTelemetry() {
+            if (!selectedDriver) return;
+            
+            const driver = drivers.find(d => d.code === selectedDriver);
+            if (!driver) return;
+            
+            const content = document.getElementById('telemetryContent');
+            const throttlePercent = 100; // Would need real data
+            const brakePercent = 0; // Would need real data
+            
+            content.innerHTML = `
+                <div class="telemetry-driver-header">
+                    <div style="width: 20px; height: 20px; background: ${driver.color}; border-radius: 50%;"></div>
+                    <div class="telemetry-driver-code">${driver.code}</div>
+                </div>
+                
+                <div class="telemetry-stat">
+                    <span class="stat-label">Speed</span>
+                    <span class="stat-value">${Math.round(driver.speed)} km/h</span>
+                </div>
+                <div class="stat-bar">
+                    <div class="stat-bar-fill" style="width: ${(driver.speed / 350) * 100}%"></div>
+                </div>
+                
+                <div class="telemetry-stat">
+                    <span class="stat-label">Position</span>
+                    <span class="stat-value">P${driver.position}</span>
+                </div>
+                
+                <div class="telemetry-stat">
+                    <span class="stat-label">Lap</span>
+                    <span class="stat-value">${driver.lap}</span>
+                </div>
+                
+                <div class="telemetry-stat">
+                    <span class="stat-label">Status</span>
+                    <span class="stat-value">${driver.is_out ? '❌ OUT' : '✅ Racing'}</span>
+                </div>
+            `;
+        }
+
+        function updateProgress() {
+            const percent = totalFrames > 0 ? (currentFrame / totalFrames) * 100 : 0;
+            document.getElementById('progressBar').style.width = percent + '%';
+            
+            const currentTime = Math.floor(currentFrame / 25);
+            const totalTime = Math.floor(totalFrames / 25);
+            document.getElementById('timeDisplay').textContent = 
+                `${formatTime(currentTime)} / ${formatTime(totalTime)}`;
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            const btn = document.getElementById('playBtn');
+            
+            if (isPlaying) {
+                console.log('▶️ Play button clicked - sending play event');
+                console.log('Current frame:', currentFrame, '/', totalFrames);
+                console.log('Drivers count:', drivers.length);
+                btn.textContent = '⏸️ Pause';
+                socket.emit('play');
+                
+                // Set a timeout to check if we receive updates
+                setTimeout(() => {
+                    console.log('⏰ After 2 seconds - Current frame:', currentFrame);
+                    if (currentFrame === 0) {
+                        console.error('❌ NO FRAME UPDATES RECEIVED - Play not working!');
+                    } else {
+                        console.log('✅ Playback is working!');
+                    }
+                }, 2000);
+            } else {
+                console.log('⏸️ Pause button clicked - sending pause event');
+                btn.textContent = '▶️ Play';
+                socket.emit('pause');
+            }
+        }
+
+        function restart() {
+            socket.emit('seek', { frame: 0 });
+            if (!isPlaying) {
+                togglePlay();
+            }
+        }
+
+        function changeSpeed(speed) {
+            currentSpeed = speed;
+            socket.emit('set_speed', { speed });
+            document.querySelector('.speed-indicator').textContent = `Speed: ${speed}x`;
+        }
+
+        function seek(event) {
+            const rect = event.target.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const percent = x / rect.width;
+            const frame = Math.floor(percent * totalFrames);
+            socket.emit('seek', { frame });
+        }
+
+        // Draw initial empty frame
+        drawFrame();
+    </script>
+</body>
+</html>
