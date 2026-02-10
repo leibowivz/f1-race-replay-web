@@ -660,3 +660,13 @@ document.addEventListener('keydown', (e) => {
         socket.emit('seek', { frame: Math.min(totalFrames - 1, currentFrame + 25) });
     }
 });
+
+// Mobile: Toggle leaderboard on tap
+if (window.innerWidth <= 768) {
+    const rightSidebar = document.getElementById('rightSidebar');
+    if (rightSidebar) {
+        rightSidebar.addEventListener('click', function() {
+            this.classList.toggle('expanded');
+        });
+    }
+}

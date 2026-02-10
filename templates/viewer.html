@@ -321,6 +321,115 @@
         .speed-btn.active {
             background: #667eea;
         }
+        
+        /* Mobile Responsive Design */
+        @media screen and (max-width: 768px) {
+            /* Hide left sidebar (weather) on mobile */
+            #leftSidebar {
+                display: none;
+            }
+            
+            /* Make right sidebar (leaderboard) collapsible */
+            #rightSidebar {
+                width: 60px;
+                overflow: hidden;
+                transition: width 0.3s ease;
+            }
+            
+            #rightSidebar:hover,
+            #rightSidebar.expanded {
+                width: 200px;
+            }
+            
+            /* Expand track to use full width */
+            #track {
+                left: 0;
+                right: 60px;
+                width: calc(100vw - 60px);
+            }
+            
+            /* Smaller top banner */
+            #sessionInfo {
+                height: 40px;
+                font-size: 14px;
+            }
+            
+            #sessionInfo h1 {
+                font-size: 16px;
+            }
+            
+            #sessionInfo .event-details {
+                display: none;
+            }
+            
+            #track {
+                top: 40px;
+            }
+            
+            #leftSidebar {
+                top: 40px;
+            }
+            
+            #rightSidebar {
+                top: 40px;
+            }
+            
+            /* Leaderboard compact mode */
+            .leaderboard-title {
+                font-size: 10px;
+                writing-mode: vertical-rl;
+                text-align: center;
+                padding: 10px 0;
+            }
+            
+            #rightSidebar:hover .leaderboard-title,
+            #rightSidebar.expanded .leaderboard-title {
+                writing-mode: horizontal-tb;
+                padding: 10px;
+                font-size: 12px;
+            }
+            
+            /* Smaller controls */
+            #controls {
+                height: 60px;
+                padding: 8px;
+            }
+            
+            .control-btn {
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+            
+            #timeDisplay {
+                font-size: 12px;
+                min-width: 80px;
+            }
+            
+            #track {
+                bottom: 60px;
+            }
+        }
+        
+        /* Very small screens (phones in portrait) */
+        @media screen and (max-width: 480px) {
+            #rightSidebar {
+                width: 40px;
+            }
+            
+            #track {
+                right: 40px;
+                width: calc(100vw - 40px);
+            }
+            
+            #sessionInfo h1 {
+                font-size: 14px;
+            }
+            
+            .control-btn {
+                padding: 5px 8px;
+                font-size: 11px;
+            }
+        }
     </style>
     <link rel="stylesheet" href="/static/f1-theme.css">
 </head>
