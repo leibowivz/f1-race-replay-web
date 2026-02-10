@@ -107,9 +107,9 @@ def load_race():
         # Return race info
         return jsonify({
             'success': True,
-            'event_name': session.event['EventName'],
-            'round_number': session.event['RoundNumber'],
-            'total_frames': total_frames,
+            'event_name': str(session.event['EventName']),
+            'round_number': int(session.event['RoundNumber']),
+            'total_frames': int(total_frames),
             'drivers': drivers_info
         })
         
@@ -174,21 +174,21 @@ def emit_current_frame():
         hex_color = '#{:02x}{:02x}{:02x}'.format(*color)
         
         drivers_list.append({
-            'code': driver_code,
+            'code': str(driver_code),
             'color': hex_color,
-            'x': driver_frame_data.get('x', 0),
-            'y': driver_frame_data.get('y', 0),
-            'speed': driver_frame_data.get('speed_kph', 0),
-            'lap': driver_frame_data.get('lap_number', 1),
-            'position': driver_frame_data.get('position', 0),
-            'tyre': driver_frame_data.get('tyre_compound', 0),
-            'is_out': driver_frame_data.get('is_out', False)
+            'x': float(driver_frame_data.get('x', 0)),
+            'y': float(driver_frame_data.get('y', 0)),
+            'speed': float(driver_frame_data.get('speed_kph', 0)),
+            'lap': int(driver_frame_data.get('lap_number', 1)),
+            'position': int(driver_frame_data.get('position', 0)),
+            'tyre': int(driver_frame_data.get('tyre_compound', 0)),
+            'is_out': bool(driver_frame_data.get('is_out', False))
         })
     
     frame_data = {
-        'frame': frame_idx,
-        'total_frames': total_frames,
-        'time': frame.get('t', 0),
+        'frame': int(frame_idx),
+        'total_frames': int(total_frames),
+        'time': float(frame.get('t', 0)),
         'drivers': drivers_list
     }
     
