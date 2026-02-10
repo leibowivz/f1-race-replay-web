@@ -6,7 +6,8 @@ import os
 # Add parent directory to path to import original f1_data module
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'f1-race-replay'))
 
-from src.f1_data import get_race_telemetry, enable_cache, load_session, list_rounds
+from src.f1_data import get_race_telemetry, enable_cache, load_session
+import fastf1
 import threading
 import time
 
@@ -43,7 +44,15 @@ def get_years():
 def get_rounds(year):
     """Get available rounds for a year"""
     try:
-        rounds = list_rounds(year)
+        enable_cache()
+        schedule = fastf1.get_event_schedule(year)
+        rounds = []
+        for _, event in schedule.iterrows():
+            rounds.append({
+                'round': int(event['RoundNumber']),
+                'name': str(event['EventName']),
+                'location': str(event['Location']) if 'Location' in event else str(event['Country'])
+            })
         return jsonify(rounds)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
