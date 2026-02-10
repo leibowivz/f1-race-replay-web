@@ -216,16 +216,30 @@
             totalFrames = data.total_frames;
             drivers = data.drivers;
             
-            // Calculate track bounds for first frame
-            if (currentFrame === 0 && drivers.length > 0) {
-                const xs = drivers.map(d => d.x);
-                const ys = drivers.map(d => d.y);
-                trackBounds = {
-                    minX: Math.min(...xs) - 500,
-                    maxX: Math.max(...xs) + 500,
-                    minY: Math.min(...ys) - 500,
-                    maxY: Math.max(...ys) + 500
-                };
+            // Calculate track bounds dynamically if not set or if drivers have valid positions
+            if (drivers.length > 0) {
+                const xs = drivers.map(d => d.x).filter(x => x !== 0 && !isNaN(x));
+                const ys = drivers.map(d => d.y).filter(y => y !== 0 && !isNaN(y));
+                
+                if (xs.length > 0 && ys.length > 0) {
+                    // Only update bounds if we haven't set them yet, or expand them
+                    const newBounds = {
+                        minX: Math.min(...xs) - 500,
+                        maxX: Math.max(...xs) + 500,
+                        minY: Math.min(...ys) - 500,
+                        maxY: Math.max(...ys) + 500
+                    };
+                    
+                    // Initialize or expand bounds
+                    if (trackBounds.minX === 0 && trackBounds.maxX === 0) {
+                        trackBounds = newBounds;
+                    } else {
+                        trackBounds.minX = Math.min(trackBounds.minX, newBounds.minX);
+                        trackBounds.maxX = Math.max(trackBounds.maxX, newBounds.maxX);
+                        trackBounds.minY = Math.min(trackBounds.minY, newBounds.minY);
+                        trackBounds.maxY = Math.max(trackBounds.maxY, newBounds.maxY);
+                    }
+                }
             }
             
             drawFrame();
@@ -243,7 +257,16 @@
             ctx.fillStyle = '#2a2a2a';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            if (drivers.length === 0) return;
+            if (drivers.length === 0) {
+                console.log('No drivers data');
+                return;
+            }
+            
+            // Debug: log first driver position
+            if (currentFrame % 50 === 0) {
+                console.log('Frame', currentFrame, 'First driver:', drivers[0]);
+                console.log('Track bounds:', trackBounds);
+            }
             
             // Draw track outline (simplified - just connect driver positions)
             ctx.strokeStyle = '#444';
