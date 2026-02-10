@@ -15,9 +15,16 @@ from src.lib.tyres import get_tyre_compound_int
 
 
 def enable_cache():
-    # Get cache location from settings
-    settings = get_settings()
-    cache_path = settings.cache_location
+    # Use /tmp for Railway (persistent across requests in same container)
+    cache_path = '/tmp/.fastf1-cache'
+    
+    # Fallback to local if /tmp not available
+    if not os.path.exists('/tmp'):
+        try:
+            settings = get_settings()
+            cache_path = settings.cache_location
+        except:
+            cache_path = './.fastf1-cache'
 
     # Check if cache folder exists
     if not os.path.exists(cache_path):
@@ -25,6 +32,7 @@ def enable_cache():
 
     # Enable local cache
     fastf1.Cache.enable_cache(cache_path)
+    print(f"📁 Using cache: {cache_path}")
 
 
 FPS = 25
@@ -204,16 +212,18 @@ def get_race_telemetry(session, session_type="R"):
 
     # Check if this data has already been computed
 
+    # Use /tmp for computed data cache on Railway
+    computed_data_dir = '/tmp/computed_data' if os.path.exists('/tmp') else 'computed_data'
+    cache_file = f"{computed_data_dir}/{event_name}_{cache_suffix}_telemetry.pkl"
+    
     try:
-        if "--refresh-data" not in sys.argv:
-            with open(
-                f"computed_data/{event_name}_{cache_suffix}_telemetry.pkl", "rb"
-            ) as f:
-                frames = pickle.load(f)
-                print(f"Loaded precomputed {cache_suffix} telemetry data.")
-                print("The replay should begin in a new window shortly!")
-                return frames
+        with open(cache_file, "rb") as f:
+            frames = pickle.load(f)
+            print(f"✅ Loaded from cache: {cache_file}")
+            print("The replay should begin in a new window shortly!")
+            return frames
     except FileNotFoundError:
+        print(f"⚠️ No cache found, computing from scratch...")
         pass  # Need to compute from scratch
 
     drivers = session.drivers
@@ -489,12 +499,17 @@ def get_race_telemetry(session, session_type="R"):
         frames.append(frame_payload)
     print("completed telemetry extraction...")
     print("Saving to cache file...")
-    # If computed_data/ directory doesn't exist, create it
-    if not os.path.exists("computed_data"):
-        os.makedirs("computed_data")
+    
+    # Use /tmp for computed data cache on Railway
+    computed_data_dir = '/tmp/computed_data' if os.path.exists('/tmp') else 'computed_data'
+    if not os.path.exists(computed_data_dir):
+        os.makedirs(computed_data_dir)
+    
+    cache_file = f"{computed_data_dir}/{event_name}_{cache_suffix}_telemetry.pkl"
+    print(f"💾 Caching to: {cache_file}")
 
     # Save using pickle (10-100x faster than JSON)
-    with open(f"computed_data/{event_name}_{cache_suffix}_telemetry.pkl", "wb") as f:
+    with open(cache_file, "wb") as f:
         pickle.dump({
             "frames": frames,
             "driver_colors": get_driver_colors(session),
