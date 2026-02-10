@@ -208,12 +208,23 @@
         let trackBounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 
         socket.on('connect', () => {
-            console.log('Connected to server');
+            console.log('✅ WebSocket connected to server');
             // Request initial frame on connect
             socket.emit('seek', { frame: 0 });
         });
 
+        socket.on('disconnect', () => {
+            console.log('❌ WebSocket disconnected');
+        });
+
+        socket.on('error', (error) => {
+            console.error('Socket error:', error);
+        });
+
         socket.on('frame_update', (data) => {
+            if (currentFrame % 100 === 0 || currentFrame === 0) {
+                console.log('📊 Frame update:', data.frame, '/', data.total_frames);
+            }
             currentFrame = data.frame;
             totalFrames = data.total_frames;
             drivers = data.drivers;
@@ -345,9 +356,11 @@
             const btn = document.getElementById('playBtn');
             
             if (isPlaying) {
+                console.log('▶️ Play button clicked - sending play event');
                 btn.textContent = '⏸️ Pause';
                 socket.emit('play');
             } else {
+                console.log('⏸️ Pause button clicked - sending pause event');
                 btn.textContent = '▶️ Play';
                 socket.emit('pause');
             }
