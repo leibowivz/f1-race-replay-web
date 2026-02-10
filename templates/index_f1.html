@@ -419,12 +419,13 @@
             
             const steps = [
                 { time: 0, text: 'Connecting to F1 API...', progress: 5 },
-                { time: 2000, text: 'Loading session info...', progress: 15 },
-                { time: 5000, text: 'Fetching driver data...', progress: 30 },
-                { time: 10000, text: 'Processing telemetry...', progress: 50 },
-                { time: 20000, text: 'Building race frames...', progress: 70 },
-                { time: 35000, text: 'Extracting track data...', progress: 85 },
-                { time: 50000, text: 'Almost ready...', progress: 95 }
+                { time: 3000, text: 'Loading session info...', progress: 15 },
+                { time: 8000, text: 'Fetching driver data...', progress: 25 },
+                { time: 15000, text: 'Processing telemetry...', progress: 40 },
+                { time: 30000, text: 'Building race frames...', progress: 60 },
+                { time: 50000, text: 'Extracting track data...', progress: 75 },
+                { time: 70000, text: 'Computing boundaries...', progress: 85 },
+                { time: 90000, text: 'Almost ready...', progress: 95 }
             ];
             
             steps.forEach(step => {
@@ -436,9 +437,9 @@
             });
 
             try {
-                // Increased timeout for first-time race loading
+                // Increased timeout for first-time race loading (especially for recent races)
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
+                const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes
                 
                 const response = await fetch('/api/load_race', {
                     method: 'POST',
@@ -483,7 +484,7 @@
                 console.error('Load error:', error);
                 
                 if (error.name === 'AbortError') {
-                    errorDiv.textContent = 'TIMEOUT: Session loading took too long (>2 min). The data may still be processing. Try again in 30 seconds.';
+                    errorDiv.textContent = 'TIMEOUT: Session loading took too long (>3 min). The data may still be processing. Try again in 30 seconds.';
                 } else {
                     errorDiv.textContent = `ERROR: ${error.message}`;
                 }
