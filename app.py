@@ -260,10 +260,10 @@ def replay_loop():
     print(f"   Total frames: {total}")
     print(f"   Starting from: {current_replay.get('frame_index', 0)}")
     
-    # Calculate frame skip to achieve ~10 FPS effective rate
-    # Original data is 25 FPS, so skip every 2-3 frames to get 10 FPS
-    frame_skip = max(1, int(25 / 10))  # Skip 2 frames = 10 FPS effective
-    print(f"   Frame skip: {frame_skip} (every {frame_skip}th frame)")
+    # Calculate frame skip to achieve ~1 FPS effective rate
+    # Original data is 25 FPS, so skip 24 frames to get 1 FPS
+    frame_skip = 25  # 1 FPS effective - much less data!
+    print(f"   Frame skip: {frame_skip} (1 FPS - every {frame_skip}th frame)")
     
     frame_count = 0
     
@@ -288,8 +288,8 @@ def replay_loop():
                 socketio.emit('replay_ended', {})
                 break
             
-            # Sleep for 10 FPS playback
-            sleep_time = (1/10) / current_replay.get('speed', 1.0)
+            # Sleep for 1 FPS playback (1 second per frame)
+            sleep_time = 1.0 / current_replay.get('speed', 1.0)
             time.sleep(sleep_time)
             
         except Exception as e:
