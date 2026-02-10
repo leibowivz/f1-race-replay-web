@@ -323,29 +323,29 @@
         }
         
         /* Mobile Responsive Design */
-        @media screen and (max-width: 768px) {
+        @media screen and (max-width: 768px), (max-device-width: 768px) {
             /* Hide left sidebar (weather) on mobile */
             #leftSidebar {
-                display: none;
+                display: none !important;
             }
             
             /* Make right sidebar (leaderboard) collapsible */
             #rightSidebar {
-                width: 60px;
+                width: 50px !important;
                 overflow: hidden;
                 transition: width 0.3s ease;
             }
             
             #rightSidebar:hover,
             #rightSidebar.expanded {
-                width: 200px;
+                width: 180px !important;
             }
             
-            /* Expand track to use full width */
+            /* Expand track to use almost full width */
             #track {
-                left: 0;
-                right: 60px;
-                width: calc(100vw - 60px);
+                left: 0 !important;
+                right: 50px !important;
+                width: calc(100vw - 50px) !important;
             }
             
             /* Smaller top banner */
@@ -411,14 +411,14 @@
         }
         
         /* Very small screens (phones in portrait) */
-        @media screen and (max-width: 480px) {
+        @media screen and (max-width: 480px), (max-device-width: 480px) {
             #rightSidebar {
-                width: 40px;
+                width: 35px !important;
             }
             
             #track {
-                right: 40px;
-                width: calc(100vw - 40px);
+                right: 35px !important;
+                width: calc(100vw - 35px) !important;
             }
             
             #sessionInfo h1 {
