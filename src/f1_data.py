@@ -161,23 +161,34 @@ def get_driver_colors(session):
     for driver_num in session.drivers:
         try:
             driver_info = session.get_driver(driver_num)
-            driver_code = driver_info['Abbreviation']
+            
+            # Handle different FastF1 versions with different key names
+            driver_code = None
+            for key in ['Abbreviation', 'DriverNumber', 'BroadcastName']:
+                if key in driver_info and driver_info[key]:
+                    driver_code = str(driver_info[key])
+                    break
+            
+            if not driver_code:
+                driver_code = str(driver_num)
             
             # Try to get team color
             try:
-                team = driver_info.get('TeamName', '')
+                team = driver_info.get('TeamName', driver_info.get('TeamColor', ''))
                 hex_color = fastf1.plotting.team_color(team)
             except:
-                # Fallback: use driver number to generate consistent color
+                # Fallback: use driver code to generate consistent color
                 hex_color = '#' + format((hash(driver_code) & 0x7FFFFF) | 0x808080, '06x')
             
             # Convert hex to RGB
             hex_color = hex_color.lstrip("#")
             rgb = tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
             rgb_colors[driver_code] = rgb
-        except:
+        except Exception as e:
             # Ultimate fallback
-            rgb_colors[driver_code if 'driver_code' in locals() else driver_num] = (128, 128, 128)
+            print(f"Error getting color for driver {driver_num}: {e}")
+            fallback_code = str(driver_num)
+            rgb_colors[fallback_code] = (128, 128, 128)
     
     return rgb_colors
 

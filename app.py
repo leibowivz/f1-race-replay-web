@@ -68,6 +68,14 @@ def load_race():
         
         print(f"Loading F1 {year} Round {round_number} Session '{session_type}'")
         
+        # Validate session type exists for this event
+        if session_type == 'S':
+            # Check if sprint exists
+            enable_cache()
+            event = fastf1.get_event(year, round_number)
+            if 'Sprint' not in str(event.get_session_name(session_type)):
+                return jsonify({'error': 'Sprint session does not exist for this race weekend. Try Race (R) or Qualifying (Q) instead.'}), 400
+        
         # Enable FastF1 cache
         enable_cache()
         
