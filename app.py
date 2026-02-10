@@ -193,18 +193,24 @@ def handle_set_speed(data):
 
 def emit_current_frame():
     """Emit current frame data to all clients"""
-    frames = current_replay.get('frames')
-    if not frames:
+    try:
+        frames = current_replay.get('frames')
+        if not frames:
+            print("⚠️ No frames available")
+            return
+        
+        frame_idx = current_replay['frame_index']
+        total_frames = current_replay['total_frames']
+        driver_colors = current_replay['telemetry'].get('driver_colors', {})
+        
+        if frame_idx >= len(frames):
+            print(f"⚠️ Frame index {frame_idx} out of range")
+            return
+        
+        frame = frames[frame_idx]
+    except Exception as e:
+        print(f"❌ Error getting frame: {e}")
         return
-    
-    frame_idx = current_replay['frame_index']
-    total_frames = current_replay['total_frames']
-    driver_colors = current_replay['telemetry'].get('driver_colors', {})
-    
-    if frame_idx >= len(frames):
-        return
-    
-    frame = frames[frame_idx]
     
     # Build driver data from frame
     drivers_list = []
@@ -242,13 +248,21 @@ def emit_current_frame():
             'rain_state': str(weather.get('rain_state', 'DRY'))
         }
     
-    socketio.emit('frame_update', frame_data)
+        socketio.emit('frame_update', frame_data)
+    except Exception as e:
+        print(f"❌ Error emitting frame: {e}")
 
 def replay_loop():
-    """Main replay loop - runs in background thread"""
+    """Main replay loop - runs in background thread with frame skipping"""
     print("🎬 Replay loop started")
-    print(f"   Total frames: {current_replay.get('total_frames', 0)}")
+    total = current_replay.get('total_frames', 0)
+    print(f"   Total frames: {total}")
     print(f"   Starting from: {current_replay.get('frame_index', 0)}")
+    
+    # Calculate frame skip to achieve ~10 FPS effective rate
+    # Original data is 25 FPS, so skip every 2-3 frames to get 10 FPS
+    frame_skip = max(1, int(25 / 10))  # Skip 2 frames = 10 FPS effective
+    print(f"   Frame skip: {frame_skip} (every {frame_skip}th frame)")
     
     frame_count = 0
     
@@ -258,22 +272,22 @@ def replay_loop():
             emit_current_frame()
             frame_count += 1
             
-            # Log every 25 frames (1 second at 25fps)
-            if frame_count % 25 == 0:
-                print(f"📊 Emitted {frame_count} frames, current index: {current_replay['frame_index']}")
+            # Log every 10 emitted frames
+            if frame_count % 10 == 0:
+                print(f"📊 Emitted {frame_count} frames, current index: {current_replay['frame_index']}/{total}")
             
-            # Advance frame
-            current_replay['frame_index'] += 1
+            # Advance frame with skipping
+            current_replay['frame_index'] += frame_skip
             
             # Check if reached end
-            if current_replay['frame_index'] >= current_replay['total_frames']:
+            if current_replay['frame_index'] >= total:
                 print("🏁 Replay ended")
                 current_replay['is_playing'] = False
                 current_replay['frame_index'] = 0
                 socketio.emit('replay_ended', {})
                 break
             
-            # Sleep based on speed (10 FPS instead of 25 to reduce load)
+            # Sleep for 10 FPS playback
             sleep_time = (1/10) / current_replay.get('speed', 1.0)
             time.sleep(sleep_time)
             
@@ -283,7 +297,7 @@ def replay_loop():
             traceback.print_exc()
             break
     
-    print(f"🛑 Replay loop exited after {frame_count} frames")
+    print(f"🛑 Replay loop exited after emitting {frame_count} frames")
 
 if __name__ == '__main__':
     # Enable FastF1 cache on startup
