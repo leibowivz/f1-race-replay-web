@@ -77,27 +77,40 @@ def load_race():
         # Get telemetry data
         telemetry = get_race_telemetry(session, session_type=session_type)
         
+        # Extract frames and calculate total
+        frames = telemetry.get('frames', [])
+        total_frames = len(frames)
+        
         # Store in global state
         current_replay['session'] = session
         current_replay['telemetry'] = telemetry
+        current_replay['frames'] = frames
         current_replay['frame_index'] = 0
-        current_replay['total_frames'] = telemetry['total_frames']
+        current_replay['total_frames'] = total_frames
         current_replay['is_playing'] = False
+        
+        # Get driver info from first frame
+        drivers_info = []
+        if frames and len(frames) > 0 and 'drivers' in frames[0]:
+            first_frame_drivers = frames[0]['drivers']
+            driver_colors = telemetry.get('driver_colors', {})
+            
+            for driver_code in first_frame_drivers.keys():
+                color = driver_colors.get(driver_code, (128, 128, 128))
+                # Convert RGB tuple to hex
+                hex_color = '#{:02x}{:02x}{:02x}'.format(*color)
+                drivers_info.append({
+                    'code': driver_code,
+                    'color': hex_color
+                })
         
         # Return race info
         return jsonify({
             'success': True,
             'event_name': session.event['EventName'],
             'round_number': session.event['RoundNumber'],
-            'total_frames': telemetry['total_frames'],
-            'drivers': [
-                {
-                    'number': d['driver_number'],
-                    'code': d['driver_code'],
-                    'color': d['team_color']
-                }
-                for d in telemetry['drivers_info']
-            ]
+            'total_frames': total_frames,
+            'drivers': drivers_info
         })
         
     except Exception as e:
@@ -141,37 +154,43 @@ def handle_set_speed(data):
 
 def emit_current_frame():
     """Emit current frame data to all clients"""
-    if current_replay['telemetry'] is None:
+    frames = current_replay.get('frames')
+    if not frames:
         return
     
     frame_idx = current_replay['frame_index']
-    telemetry = current_replay['telemetry']
+    total_frames = current_replay['total_frames']
+    driver_colors = current_replay['telemetry'].get('driver_colors', {})
     
-    # Get frame data for all drivers
+    if frame_idx >= len(frames):
+        return
+    
+    frame = frames[frame_idx]
+    
+    # Build driver data from frame
+    drivers_list = []
+    for driver_code, driver_frame_data in frame.get('drivers', {}).items():
+        color = driver_colors.get(driver_code, (128, 128, 128))
+        hex_color = '#{:02x}{:02x}{:02x}'.format(*color)
+        
+        drivers_list.append({
+            'code': driver_code,
+            'color': hex_color,
+            'x': driver_frame_data.get('x', 0),
+            'y': driver_frame_data.get('y', 0),
+            'speed': driver_frame_data.get('speed_kph', 0),
+            'lap': driver_frame_data.get('lap_number', 1),
+            'position': driver_frame_data.get('position', 0),
+            'tyre': driver_frame_data.get('tyre_compound', 0),
+            'is_out': driver_frame_data.get('is_out', False)
+        })
+    
     frame_data = {
         'frame': frame_idx,
-        'total_frames': telemetry['total_frames'],
-        'time': telemetry['time_s'][frame_idx] if frame_idx < len(telemetry['time_s']) else 0,
-        'drivers': []
+        'total_frames': total_frames,
+        'time': frame.get('t', 0),
+        'drivers': drivers_list
     }
-    
-    for driver in telemetry['drivers_info']:
-        driver_idx = driver['index']
-        driver_data = telemetry['drivers_data'][driver_idx]
-        
-        if frame_idx < len(driver_data['x']):
-            frame_data['drivers'].append({
-                'number': driver['driver_number'],
-                'code': driver['driver_code'],
-                'color': driver['team_color'],
-                'x': float(driver_data['x'][frame_idx]),
-                'y': float(driver_data['y'][frame_idx]),
-                'speed': float(driver_data['speed_kph'][frame_idx]),
-                'lap': int(driver_data['lap_number'][frame_idx]),
-                'position': int(driver_data['position'][frame_idx]) if frame_idx < len(driver_data['position']) else 0,
-                'tyre': int(driver_data['tyre_compound'][frame_idx]),
-                'is_out': bool(driver_data['is_out'][frame_idx])
-            })
     
     socketio.emit('frame_update', frame_data)
 
