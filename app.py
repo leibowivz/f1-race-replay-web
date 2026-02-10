@@ -248,6 +248,7 @@ def emit_current_frame():
             'rain_state': str(weather.get('rain_state', 'DRY'))
         }
     
+    try:
         socketio.emit('frame_update', frame_data)
     except Exception as e:
         print(f"❌ Error emitting frame: {e}")
