@@ -142,8 +142,17 @@ def handle_disconnect():
 @socketio.on('play')
 def handle_play():
     """Start race replay"""
+    print("Play requested")
+    print(f"Current state: frames={len(current_replay.get('frames', []))}, total={current_replay.get('total_frames', 0)}")
+    
+    if not current_replay.get('frames'):
+        print("ERROR: No frames loaded!")
+        socketio.emit('error', {'message': 'No race data loaded'})
+        return
+    
     current_replay['is_playing'] = True
     threading.Thread(target=replay_loop, daemon=True).start()
+    print("Replay thread started")
 
 @socketio.on('pause')
 def handle_pause():
@@ -207,7 +216,9 @@ def emit_current_frame():
 
 def replay_loop():
     """Main replay loop - runs in background thread"""
-    while current_replay['is_playing'] and current_replay['telemetry'] is not None:
+    print("Replay loop started")
+    
+    while current_replay['is_playing'] and current_replay.get('frames'):
         # Emit current frame
         emit_current_frame()
         
@@ -216,13 +227,17 @@ def replay_loop():
         
         # Check if reached end
         if current_replay['frame_index'] >= current_replay['total_frames']:
+            print("Replay ended")
             current_replay['is_playing'] = False
             current_replay['frame_index'] = 0
             socketio.emit('replay_ended', {})
             break
         
         # Sleep based on speed (25 FPS base)
-        time.sleep((1/25) / current_replay['speed'])
+        sleep_time = (1/25) / current_replay.get('speed', 1.0)
+        time.sleep(sleep_time)
+    
+    print("Replay loop exited")
 
 if __name__ == '__main__':
     # Enable FastF1 cache on startup
