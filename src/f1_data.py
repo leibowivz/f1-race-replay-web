@@ -155,14 +155,30 @@ def load_session(year, round_number, session_type="R"):
 
 
 def get_driver_colors(session):
-    color_mapping = fastf1.plotting.get_driver_color_mapping(session)
-
-    # Convert hex colors to RGB tuples
+    """Get driver colors from team colors"""
     rgb_colors = {}
-    for driver, hex_color in color_mapping.items():
-        hex_color = hex_color.lstrip("#")
-        rgb = tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
-        rgb_colors[driver] = rgb
+    
+    for driver_num in session.drivers:
+        try:
+            driver_info = session.get_driver(driver_num)
+            driver_code = driver_info['Abbreviation']
+            
+            # Try to get team color
+            try:
+                team = driver_info.get('TeamName', '')
+                hex_color = fastf1.plotting.team_color(team)
+            except:
+                # Fallback: use driver number to generate consistent color
+                hex_color = '#' + format((hash(driver_code) & 0x7FFFFF) | 0x808080, '06x')
+            
+            # Convert hex to RGB
+            hex_color = hex_color.lstrip("#")
+            rgb = tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
+            rgb_colors[driver_code] = rgb
+        except:
+            # Ultimate fallback
+            rgb_colors[driver_code if 'driver_code' in locals() else driver_num] = (128, 128, 128)
+    
     return rgb_colors
 
 
