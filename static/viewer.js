@@ -71,10 +71,20 @@ if (isQualifyingMode) {
     }
 }
 
-// Socket events
+// Socket events with detailed logging
 socket.on('connect', () => {
     console.log('✅ Connected to server');
+    console.log('Socket ID:', socket.id);
+    console.log('Transport:', socket.io.engine.transport.name);
     socket.emit('seek', { frame: 0 });
+});
+
+socket.on('connect_error', (error) => {
+    console.error('❌ Connection error:', error.message);
+});
+
+socket.on('disconnect', (reason) => {
+    console.warn('⚠️ Disconnected:', reason);
 });
 
 socket.on('frame_update', (data) => {
@@ -670,3 +680,91 @@ if (window.innerWidth <= 768) {
         });
     }
 }
+
+// ========================================
+// Mobile Support - Enhanced UI
+// ========================================
+
+// Toggle leaderboard on mobile
+document.addEventListener('DOMContentLoaded', () => {
+    const rightSidebar = document.getElementById('rightSidebar');
+    const leaderboardTitle = rightSidebar.querySelector('.leaderboard-title');
+    const telemetryPanel = document.getElementById('telemetryPanel');
+    
+    // Make leaderboard expandable on mobile
+    if (window.innerWidth <= 768) {
+        leaderboardTitle.addEventListener('click', () => {
+            rightSidebar.classList.toggle('expanded');
+        });
+    }
+    
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) {
+            rightSidebar.classList.remove('expanded');
+        }
+    });
+});
+
+// Override updateDriverTelemetry for mobile
+const originalUpdateDriverTelemetry = window.updateDriverTelemetry;
+window.updateDriverTelemetry = function() {
+    if (window.innerWidth <= 768) {
+        // Show telemetry in bottom drawer on mobile
+        const telemetryPanel = document.getElementById('telemetryPanel');
+        const track = document.getElementById('track');
+        
+        if (selectedDriver) {
+            telemetryPanel.classList.add('visible');
+            track.classList.add('with-telemetry');
+            
+            // Update telemetry content
+            const driver = drivers.find(d => d.code === selectedDriver);
+            if (driver) {
+                telemetryPanel.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <h3 style="margin: 0; color: ${driver.color};">${driver.code} - ${driver.name}</h3>
+                        <button onclick="closeTelemetry()" style="background: #e10600; border: none; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer;">✕ Close</button>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 11px;">
+                        <div><strong>Position:</strong> P${driver.position}</div>
+                        <div><strong>Lap:</strong> ${driver.lap}</div>
+                        <div><strong>Speed:</strong> ${parseFloat(driver.speed).toFixed(3)} km/h</div>
+                        <div><strong>Throttle:</strong> ${parseFloat(driver.throttle).toFixed(3)}%</div>
+                        <div><strong>Brake:</strong> ${parseFloat(driver.brake).toFixed(3)}%</div>
+                        <div><strong>Gear:</strong> ${driver.gear}</div>
+                        <div><strong>DRS:</strong> ${driver.drs ? '✅ Active' : '❌ Inactive'}</div>
+                        <div><strong>Compound:</strong> ${driver.compound || 'N/A'}</div>
+                    </div>
+                `;
+            }
+        } else {
+            telemetryPanel.classList.remove('visible');
+            track.classList.remove('with-telemetry');
+        }
+    } else {
+        // Desktop: use original function
+        if (originalUpdateDriverTelemetry) {
+            originalUpdateDriverTelemetry();
+        }
+    }
+};
+
+window.closeTelemetry = function() {
+    selectedDriver = null;
+    const telemetryPanel = document.getElementById('telemetryPanel');
+    const track = document.getElementById('track');
+    telemetryPanel.classList.remove('visible');
+    track.classList.remove('with-telemetry');
+    drawFrame();
+};
+
+// No weather display on mobile
+const originalUpdateWeather = window.updateWeather;
+window.updateWeather = function() {
+    if (window.innerWidth > 768 && originalUpdateWeather) {
+        // Desktop only: use original function
+        originalUpdateWeather();
+    }
+    // Mobile: no weather display
+};

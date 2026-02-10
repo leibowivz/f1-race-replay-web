@@ -153,13 +153,18 @@ def test_emit():
 
 @app.route('/viewer')
 def viewer():
-    """Race replay viewer page - new UI matching original"""
+    """Race replay viewer page with mobile support"""
     return render_template('viewer.html')
 
 @app.route('/qualifying')
 def qualifying_view():
     """Qualifying results page"""
     return render_template('qualifying.html')
+
+@app.route('/viewer-mobile')
+def viewer_mobile():
+    """Mobile-optimized viewer page"""
+    return render_template('viewer-mobile.html')
 
 @app.route('/api/years')
 def get_years():
@@ -724,3 +729,5 @@ if __name__ == '__main__':
     
     # Run with SocketIO
     socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=True)
+
+
