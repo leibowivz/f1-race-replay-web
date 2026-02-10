@@ -19,6 +19,11 @@ let trackData = null;
 let drsZones = [];
 let raceEvents = [];
 
+// Frame rate control (5 FPS target)
+let lastRenderTime = 0;
+const FRAME_INTERVAL = 200; // ms between renders (5 FPS)
+let pendingFrameData = null;
+
 // Resize canvas to match display size
 function resizeCanvas() {
     const rect = canvas.getBoundingClientRect();
@@ -73,6 +78,21 @@ socket.on('connect', () => {
 });
 
 socket.on('frame_update', (data) => {
+    // Store frame data
+    pendingFrameData = data;
+    
+    // Throttle rendering to target FPS
+    const now = Date.now();
+    const timeSinceLastRender = now - lastRenderTime;
+    const targetInterval = FRAME_INTERVAL / currentSpeed;
+    
+    if (timeSinceLastRender >= targetInterval || currentFrame === 0) {
+        renderFrame(data);
+        lastRenderTime = now;
+    }
+});
+
+function renderFrame(data) {
     if (currentFrame % 100 === 0 || currentFrame === 0) {
         console.log('📊 Frame:', data.frame, '/', data.total_frames);
     }
@@ -110,7 +130,7 @@ socket.on('frame_update', (data) => {
         updateDriverTelemetry();
     }
     updateProgress();
-});
+}
 
 socket.on('replay_ended', () => {
     isPlaying = false;
@@ -405,10 +425,15 @@ function selectDriver(code) {
         document.getElementById('driverInfoPanel').style.display = 'none';
     } else {
         selectedDriver = code;
-        updateDriverTelemetry();
         document.getElementById('driverInfoPanel').style.display = 'block';
     }
-    drawFrame();
+    // Use pending frame data if available, otherwise use current state
+    if (pendingFrameData) {
+        renderFrame(pendingFrameData);
+    } else {
+        updateDriverTelemetry();
+        drawFrame();
+    }
 }
 
 function updateDriverTelemetry() {
