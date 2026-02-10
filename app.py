@@ -42,6 +42,19 @@ def get_status():
         'frame_count': len(current_replay.get('frames', []))
     })
 
+@app.route('/api/test_emit')
+def test_emit():
+    """Test emitting a single frame"""
+    try:
+        print("🧪 TEST: Manually emitting current frame")
+        emit_current_frame()
+        return jsonify({'success': True, 'message': 'Frame emitted'})
+    except Exception as e:
+        print(f"❌ TEST FAILED: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/viewer')
 def viewer():
     """Race replay viewer page"""
@@ -294,13 +307,17 @@ def replay_loop():
     
     while current_replay['is_playing'] and current_replay.get('frames'):
         try:
+            # Debug: Log before emit
+            if frame_count == 0:
+                print(f"🎬 About to emit first frame (index {current_replay['frame_index']})")
+            
             # Emit current frame
             emit_current_frame()
             frame_count += 1
             
-            # Log every 10 emitted frames
-            if frame_count % 10 == 0:
-                print(f"📊 Emitted {frame_count} frames, current index: {current_replay['frame_index']}/{total}")
+            # Log every frame for first 5, then every 10
+            if frame_count <= 5 or frame_count % 10 == 0:
+                print(f"📊 Emitted frame #{frame_count}, index: {current_replay['frame_index']}/{total}")
             
             # Advance frame with skipping
             current_replay['frame_index'] += frame_skip
