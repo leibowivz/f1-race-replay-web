@@ -211,6 +211,7 @@
             if (!year || !round) return;
 
             loadBtn.disabled = true;
+            loading.innerHTML = '<p>⏳ Loading F1 data from API... This takes 30-60 seconds (first time per race)</p>';
             loading.style.display = 'block';
             errorDiv.style.display = 'none';
 
@@ -224,8 +225,13 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    // Redirect to viewer
-                    window.location.href = '/viewer';
+                    // Show success message and wait a bit before redirect
+                    loading.innerHTML = '<p style="color: #4caf50;">✅ Race data loaded! Redirecting to viewer...</p>';
+                    
+                    // Wait 2 seconds before redirect to ensure backend is ready
+                    setTimeout(() => {
+                        window.location.href = '/viewer';
+                    }, 2000);
                 } else {
                     throw new Error(data.error || 'Failed to load race');
                 }

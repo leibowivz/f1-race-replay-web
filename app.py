@@ -107,8 +107,15 @@ def load_race():
         # Load session
         session = load_session(year, round_number, session_type)
         
-        # Get telemetry data
+        # Get telemetry data (this is the slow part!)
+        print("⏳ Getting race telemetry... this may take 30-60 seconds")
+        import time
+        start_time = time.time()
+        
         telemetry = get_race_telemetry(session, session_type=session_type)
+        
+        elapsed = time.time() - start_time
+        print(f"✅ Telemetry loaded in {elapsed:.1f} seconds")
         
         # Extract frames and calculate total
         frames = telemetry.get('frames', [])
