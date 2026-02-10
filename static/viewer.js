@@ -86,7 +86,8 @@ socket.on('frame_update', (data) => {
     const timeSinceLastRender = now - lastRenderTime;
     const targetInterval = FRAME_INTERVAL / currentSpeed;
     
-    if (timeSinceLastRender >= targetInterval || currentFrame === 0) {
+    // Always render first frame immediately, then throttle
+    if (lastRenderTime === 0 || timeSinceLastRender >= targetInterval) {
         renderFrame(data);
         lastRenderTime = now;
     }
@@ -601,8 +602,14 @@ function togglePlay() {
     const btn = document.getElementById('playBtn');
     
     if (isPlaying) {
-        btn.innerHTML = '⏸ Pause';
+        btn.innerHTML = '⏳ Starting...';
+        btn.disabled = true;
         socket.emit('play');
+        // Re-enable after first frame arrives
+        setTimeout(() => {
+            btn.innerHTML = '⏸ Pause';
+            btn.disabled = false;
+        }, 500);
     } else {
         btn.innerHTML = '▶ Play';
         socket.emit('pause');
