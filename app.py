@@ -189,5 +189,8 @@ if __name__ == '__main__':
     # Enable FastF1 cache on startup
     enable_cache()
     
+    # Get port from environment
+    port = int(os.environ.get('PORT', 5000))
+    
     # Run with SocketIO
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, host='0.0.0.0', port=port, debug=False)
