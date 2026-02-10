@@ -536,8 +536,20 @@
             
             if (isPlaying) {
                 console.log('▶️ Play button clicked - sending play event');
+                console.log('Current frame:', currentFrame, '/', totalFrames);
+                console.log('Drivers count:', drivers.length);
                 btn.textContent = '⏸️ Pause';
                 socket.emit('play');
+                
+                // Set a timeout to check if we receive updates
+                setTimeout(() => {
+                    console.log('⏰ After 2 seconds - Current frame:', currentFrame);
+                    if (currentFrame === 0) {
+                        console.error('❌ NO FRAME UPDATES RECEIVED - Play not working!');
+                    } else {
+                        console.log('✅ Playback is working!');
+                    }
+                }, 2000);
             } else {
                 console.log('⏸️ Pause button clicked - sending pause event');
                 btn.textContent = '▶️ Play';

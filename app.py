@@ -30,6 +30,18 @@ def index():
     """Main page with race selection"""
     return render_template('index.html')
 
+@app.route('/api/status')
+def get_status():
+    """Get current replay status for debugging"""
+    return jsonify({
+        'has_session': current_replay.get('session') is not None,
+        'has_frames': current_replay.get('frames') is not None,
+        'total_frames': current_replay.get('total_frames', 0),
+        'current_frame': current_replay.get('frame_index', 0),
+        'is_playing': current_replay.get('is_playing', False),
+        'frame_count': len(current_replay.get('frames', []))
+    })
+
 @app.route('/viewer')
 def viewer():
     """Race replay viewer page"""
@@ -234,28 +246,44 @@ def emit_current_frame():
 
 def replay_loop():
     """Main replay loop - runs in background thread"""
-    print("Replay loop started")
+    print("🎬 Replay loop started")
+    print(f"   Total frames: {current_replay.get('total_frames', 0)}")
+    print(f"   Starting from: {current_replay.get('frame_index', 0)}")
+    
+    frame_count = 0
     
     while current_replay['is_playing'] and current_replay.get('frames'):
-        # Emit current frame
-        emit_current_frame()
-        
-        # Advance frame
-        current_replay['frame_index'] += 1
-        
-        # Check if reached end
-        if current_replay['frame_index'] >= current_replay['total_frames']:
-            print("Replay ended")
-            current_replay['is_playing'] = False
-            current_replay['frame_index'] = 0
-            socketio.emit('replay_ended', {})
+        try:
+            # Emit current frame
+            emit_current_frame()
+            frame_count += 1
+            
+            # Log every 25 frames (1 second at 25fps)
+            if frame_count % 25 == 0:
+                print(f"📊 Emitted {frame_count} frames, current index: {current_replay['frame_index']}")
+            
+            # Advance frame
+            current_replay['frame_index'] += 1
+            
+            # Check if reached end
+            if current_replay['frame_index'] >= current_replay['total_frames']:
+                print("🏁 Replay ended")
+                current_replay['is_playing'] = False
+                current_replay['frame_index'] = 0
+                socketio.emit('replay_ended', {})
+                break
+            
+            # Sleep based on speed (10 FPS instead of 25 to reduce load)
+            sleep_time = (1/10) / current_replay.get('speed', 1.0)
+            time.sleep(sleep_time)
+            
+        except Exception as e:
+            print(f"❌ Error in replay loop: {e}")
+            import traceback
+            traceback.print_exc()
             break
-        
-        # Sleep based on speed (25 FPS base)
-        sleep_time = (1/25) / current_replay.get('speed', 1.0)
-        time.sleep(sleep_time)
     
-    print("Replay loop exited")
+    print(f"🛑 Replay loop exited after {frame_count} frames")
 
 if __name__ == '__main__':
     # Enable FastF1 cache on startup
