@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Race Replay - Select Race</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        select, button {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #667eea;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .emoji {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="emoji">🏎️ 🏁</div>
+        <h1>F1 Race Replay</h1>
+        <p class="subtitle">Select a race to watch</p>
+        
+        <form id="raceForm">
+            <div class="form-group">
+                <label for="year">Season</label>
+                <select id="year" required>
+                    <option value="">Select Year...</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="round">Race Weekend</label>
+                <select id="round" required disabled>
+                    <option value="">Select Round...</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="sessionType">Session Type</label>
+                <select id="sessionType" required>
+                    <option value="R">Race</option>
+                    <option value="Q">Qualifying</option>
+                    <option value="S">Sprint</option>
+                </select>
+            </div>
+            
+            <button type="submit" id="loadBtn">Load Race</button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <p>Loading race data... This may take a minute ⏱️</p>
+        </div>
+        
+        <div class="error" id="error"></div>
+    </div>
+
+    <script>
+        const yearSelect = document.getElementById('year');
+        const roundSelect = document.getElementById('round');
+        const loadBtn = document.getElementById('loadBtn');
+        const loading = document.getElementById('loading');
+        const errorDiv = document.getElementById('error');
+
+        // Load years on page load
+        fetch('/api/years')
+            .then(r => r.json())
+            .then(years => {
+                years.reverse().forEach(year => {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = year;
+                    yearSelect.appendChild(option);
+                });
+            });
+
+        // Load rounds when year selected
+        yearSelect.addEventListener('change', async () => {
+            const year = yearSelect.value;
+            if (!year) {
+                roundSelect.disabled = true;
+                roundSelect.innerHTML = '<option value="">Select Round...</option>';
+                return;
+            }
+
+            roundSelect.disabled = false;
+            roundSelect.innerHTML = '<option value="">Loading...</option>';
+
+            try {
+                const response = await fetch(`/api/rounds/${year}`);
+                const rounds = await response.json();
+                
+                roundSelect.innerHTML = '<option value="">Select Round...</option>';
+                rounds.forEach(round => {
+                    const option = document.createElement('option');
+                    option.value = round.round;
+                    option.textContent = `Round ${round.round}: ${round.name} (${round.location})`;
+                    roundSelect.appendChild(option);
+                });
+            } catch (error) {
+                roundSelect.innerHTML = '<option value="">Error loading rounds</option>';
+                console.error('Error loading rounds:', error);
+            }
+        });
+
+        // Handle form submission
+        document.getElementById('raceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const year = yearSelect.value;
+            const round = roundSelect.value;
+            const sessionType = document.getElementById('sessionType').value;
+
+            if (!year || !round) return;
+
+            loadBtn.disabled = true;
+            loading.style.display = 'block';
+            errorDiv.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/load_race', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ year, round, session_type: sessionType })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Redirect to viewer
+                    window.location.href = '/viewer';
+                } else {
+                    throw new Error(data.error || 'Failed to load race');
+                }
+            } catch (error) {
+                errorDiv.textContent = `Error: ${error.message}`;
+                errorDiv.style.display = 'block';
+                loadBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

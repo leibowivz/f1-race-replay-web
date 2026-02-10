@@ -1,0 +1,9 @@
+Flask==3.0.0
+flask-socketio==5.3.5
+python-socketio==5.10.0
+fastf1==3.3.5
+pandas==2.1.4
+numpy==1.26.2
+matplotlib==3.8.2
+gunicorn==21.2.0
+eventlet==0.33.3

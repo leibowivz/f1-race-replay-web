@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Race Replay - Viewer</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            overflow: hidden;
+        }
+        
+        #container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        #trackContainer {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #2a2a2a;
+        }
+        
+        #track {
+            border: 2px solid #444;
+            border-radius: 10px;
+        }
+        
+        #sidebar {
+            width: 350px;
+            background: #222;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        h2 {
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+        
+        #leaderboard {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .driver-row {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            margin-bottom: 5px;
+            background: #333;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .driver-row.out {
+            opacity: 0.5;
+        }
+        
+        .position {
+            font-weight: bold;
+            margin-right: 12px;
+            min-width: 25px;
+        }
+        
+        .driver-code {
+            font-weight: 600;
+            flex: 1;
+        }
+        
+        .driver-info {
+            font-size: 0.85em;
+            color: #aaa;
+        }
+        
+        #controls {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 15px;
+        }
+        
+        .control-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        #progress {
+            width: 100%;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            margin: 15px 0;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        #progressBar {
+            height: 100%;
+            background: #667eea;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.1s;
+        }
+        
+        #timeDisplay {
+            text-align: center;
+            font-size: 1.2em;
+            margin-top: 10px;
+            color: #aaa;
+        }
+        
+        .speed-indicator {
+            text-align: center;
+            margin-top: 10px;
+            color: #667eea;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="trackContainer">
+            <canvas id="track" width="800" height="600"></canvas>
+        </div>
+        
+        <div id="sidebar">
+            <h2>🏁 Race Control</h2>
+            
+            <div id="leaderboard">
+                <h3 style="margin-bottom: 10px;">Leaderboard</h3>
+                <div id="leaderboardContent">
+                    <p style="color: #666;">Loading...</p>
+                </div>
+            </div>
+            
+            <div id="controls">
+                <h3 style="margin-bottom: 15px;">Controls</h3>
+                
+                <div class="control-row">
+                    <button id="playBtn" onclick="togglePlay()">▶️ Play</button>
+                    <button onclick="restart()">🔄 Restart</button>
+                </div>
+                
+                <div class="control-row">
+                    <button onclick="changeSpeed(0.5)">0.5x</button>
+                    <button onclick="changeSpeed(1.0)">1x</button>
+                    <button onclick="changeSpeed(2.0)">2x</button>
+                    <button onclick="changeSpeed(4.0)">4x</button>
+                </div>
+                
+                <div id="progress" onclick="seek(event)">
+                    <div id="progressBar"></div>
+                </div>
+                
+                <div id="timeDisplay">0:00 / 0:00</div>
+                <div class="speed-indicator">Speed: 1.0x</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('track');
+        const ctx = canvas.getContext('2d');
+        const socket = io();
+        
+        let isPlaying = false;
+        let currentSpeed = 1.0;
+        let totalFrames = 0;
+        let currentFrame = 0;
+        let drivers = [];
+        let trackBounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+        socket.on('frame_update', (data) => {
+            currentFrame = data.frame;
+            totalFrames = data.total_frames;
+            drivers = data.drivers;
+            
+            // Calculate track bounds for first frame
+            if (currentFrame === 0 && drivers.length > 0) {
+                const xs = drivers.map(d => d.x);
+                const ys = drivers.map(d => d.y);
+                trackBounds = {
+                    minX: Math.min(...xs) - 500,
+                    maxX: Math.max(...xs) + 500,
+                    minY: Math.min(...ys) - 500,
+                    maxY: Math.max(...ys) + 500
+                };
+            }
+            
+            drawFrame();
+            updateLeaderboard();
+            updateProgress();
+        });
+
+        socket.on('replay_ended', () => {
+            isPlaying = false;
+            document.getElementById('playBtn').textContent = '▶️ Play';
+        });
+
+        function drawFrame() {
+            // Clear canvas
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            if (drivers.length === 0) return;
+            
+            // Draw track outline (simplified - just connect driver positions)
+            ctx.strokeStyle = '#444';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            // Scale and translate coordinates to fit canvas
+            const scaleX = canvas.width / (trackBounds.maxX - trackBounds.minX);
+            const scaleY = canvas.height / (trackBounds.maxY - trackBounds.minY);
+            const scale = Math.min(scaleX, scaleY) * 0.9;
+            
+            // Draw drivers
+            drivers.forEach(driver => {
+                const x = (driver.x - trackBounds.minX) * scale + (canvas.width - (trackBounds.maxX - trackBounds.minX) * scale) / 2;
+                const y = (driver.y - trackBounds.minY) * scale + (canvas.height - (trackBounds.maxY - trackBounds.minY) * scale) / 2;
+                
+                // Draw driver dot
+                ctx.fillStyle = driver.is_out ? '#666' : driver.color;
+                ctx.beginPath();
+                ctx.arc(x, y, 8, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw driver code
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(driver.code, x, y + 20);
+            });
+        }
+
+        function updateLeaderboard() {
+            const content = document.getElementById('leaderboardContent');
+            
+            // Sort by position
+            const sorted = [...drivers].sort((a, b) => a.position - b.position);
+            
+            content.innerHTML = sorted.map(driver => `
+                <div class="driver-row ${driver.is_out ? 'out' : ''}" style="border-left-color: ${driver.color}">
+                    <span class="position">${driver.position}</span>
+                    <span class="driver-code">${driver.code}</span>
+                    <span class="driver-info">
+                        Lap ${driver.lap} | ${Math.round(driver.speed)} km/h
+                        ${driver.is_out ? '| OUT' : ''}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function updateProgress() {
+            const percent = totalFrames > 0 ? (currentFrame / totalFrames) * 100 : 0;
+            document.getElementById('progressBar').style.width = percent + '%';
+            
+            const currentTime = Math.floor(currentFrame / 25);
+            const totalTime = Math.floor(totalFrames / 25);
+            document.getElementById('timeDisplay').textContent = 
+                `${formatTime(currentTime)} / ${formatTime(totalTime)}`;
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            const btn = document.getElementById('playBtn');
+            
+            if (isPlaying) {
+                btn.textContent = '⏸️ Pause';
+                socket.emit('play');
+            } else {
+                btn.textContent = '▶️ Play';
+                socket.emit('pause');
+            }
+        }
+
+        function restart() {
+            socket.emit('seek', { frame: 0 });
+            if (!isPlaying) {
+                togglePlay();
+            }
+        }
+
+        function changeSpeed(speed) {
+            currentSpeed = speed;
+            socket.emit('set_speed', { speed });
+            document.querySelector('.speed-indicator').textContent = `Speed: ${speed}x`;
+        }
+
+        function seek(event) {
+            const rect = event.target.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const percent = x / rect.width;
+            const frame = Math.floor(percent * totalFrames);
+            socket.emit('seek', { frame });
+        }
+
+        // Draw initial empty frame
+        drawFrame();
+    </script>
+</body>
+</html>
