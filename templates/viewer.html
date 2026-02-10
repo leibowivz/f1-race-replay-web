@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>F1 Race Replay - Viewer</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link rel="stylesheet" href="/static/viewer-enhanced.css">
     <style>
         * {
             margin: 0;
@@ -163,6 +164,41 @@
         <div id="sidebar">
             <h2>🏁 Race Control</h2>
             
+            <div id="raceInfo">
+                <h3>📍 Race Event</h3>
+                <div class="event-name" id="eventName">Loading...</div>
+                <div class="lap-info" id="lapInfo">Lap 0 / 0</div>
+            </div>
+            
+            <div id="weatherPanel" class="weather-panel" style="display:none;">
+                <h3 style="margin-bottom: 10px;">🌤️ Weather</h3>
+                <div class="weather-grid">
+                    <div class="weather-item">
+                        <span class="weather-label">Track Temp</span>
+                        <span class="weather-value" id="weatherTrackTemp">--°C</span>
+                    </div>
+                    <div class="weather-item">
+                        <span class="weather-label">Air Temp</span>
+                        <span class="weather-value" id="weatherAirTemp">--°C</span>
+                    </div>
+                    <div class="weather-item">
+                        <span class="weather-label">Humidity</span>
+                        <span class="weather-value" id="weatherHumidity">--%</span>
+                    </div>
+                    <div class="weather-item">
+                        <span class="weather-label">Wind</span>
+                        <span class="weather-value" id="weatherWind">-- km/h</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="telemetryPanel" class="telemetry-panel" style="display:none;">
+                <h3 style="margin-bottom: 10px;">📊 Driver Telemetry</h3>
+                <div id="telemetryContent">
+                    <p style="color: #666;">Click a driver to view telemetry</p>
+                </div>
+            </div>
+            
             <div id="leaderboard">
                 <h3 style="margin-bottom: 10px;">Leaderboard</h3>
                 <div id="leaderboardContent">
@@ -206,6 +242,12 @@
         let currentFrame = 0;
         let drivers = [];
         let trackBounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+        let trackPath = []; // Store all driver positions to draw track outline
+        let selectedDriver = null;
+        let eventName = '';
+        let currentLap = 1;
+        let totalLaps = 0;
+        let weatherData = null;
 
         socket.on('connect', () => {
             console.log('✅ WebSocket connected to server');
@@ -255,10 +297,33 @@
                 }
             }
             
+            // Update weather if available
+            if (data.weather) {
+                weatherData = data.weather;
+                updateWeather();
+            }
+            
             drawFrame();
             updateLeaderboard();
+            if (selectedDriver) {
+                updateTelemetry();
+            }
             updateProgress();
         });
+        
+        function updateWeather() {
+            if (!weatherData) return;
+            
+            document.getElementById('weatherPanel').style.display = 'block';
+            document.getElementById('weatherTrackTemp').textContent = 
+                weatherData.track_temp ? `${Math.round(weatherData.track_temp)}°C` : '--°C';
+            document.getElementById('weatherAirTemp').textContent = 
+                weatherData.air_temp ? `${Math.round(weatherData.air_temp)}°C` : '--°C';
+            document.getElementById('weatherHumidity').textContent = 
+                weatherData.humidity ? `${Math.round(weatherData.humidity)}%` : '--%';
+            document.getElementById('weatherWind').textContent = 
+                weatherData.wind_speed ? `${Math.round(weatherData.wind_speed)} km/h` : '-- km/h';
+        }
 
         socket.on('replay_ended', () => {
             isPlaying = false;
@@ -268,6 +333,16 @@
         socket.on('initial_load_complete', (data) => {
             console.log('Race loaded, total frames:', data.total_frames);
             totalFrames = data.total_frames;
+            
+            // Update race info
+            if (data.event_name) {
+                eventName = data.event_name;
+                document.getElementById('eventName').textContent = eventName;
+            }
+            if (data.total_laps) {
+                totalLaps = data.total_laps;
+            }
+            
             // Request first frame
             socket.emit('seek', { frame: 0 });
         });
@@ -282,38 +357,80 @@
                 return;
             }
             
-            // Debug: log first driver position
-            if (currentFrame % 50 === 0) {
-                console.log('Frame', currentFrame, 'First driver:', drivers[0]);
-                console.log('Track bounds:', trackBounds);
+            // Build track path from driver positions
+            if (trackPath.length < 1000 && drivers.length > 0) {
+                drivers.forEach(driver => {
+                    if (driver.x !== 0 && driver.y !== 0) {
+                        trackPath.push({ x: driver.x, y: driver.y });
+                    }
+                });
             }
-            
-            // Draw track outline (simplified - just connect driver positions)
-            ctx.strokeStyle = '#444';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
             
             // Scale and translate coordinates to fit canvas
             const scaleX = canvas.width / (trackBounds.maxX - trackBounds.minX);
             const scaleY = canvas.height / (trackBounds.maxY - trackBounds.minY);
-            const scale = Math.min(scaleX, scaleY) * 0.9;
+            const scale = Math.min(scaleX, scaleY) * 0.85;
+            
+            function transformX(x) {
+                return (x - trackBounds.minX) * scale + (canvas.width - (trackBounds.maxX - trackBounds.minX) * scale) / 2;
+            }
+            
+            function transformY(y) {
+                return (y - trackBounds.minY) * scale + (canvas.height - (trackBounds.maxY - trackBounds.minY) * scale) / 2;
+            }
+            
+            // Draw track outline
+            if (trackPath.length > 50) {
+                ctx.strokeStyle = '#444';
+                ctx.lineWidth = 20;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.globalAlpha = 0.3;
+                ctx.beginPath();
+                
+                const step = Math.max(1, Math.floor(trackPath.length / 500));
+                for (let i = 0; i < trackPath.length; i += step) {
+                    const point = trackPath[i];
+                    const x = transformX(point.x);
+                    const y = transformY(point.y);
+                    
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.stroke();
+                ctx.globalAlpha = 1.0;
+            }
             
             // Draw drivers
             drivers.forEach(driver => {
-                const x = (driver.x - trackBounds.minX) * scale + (canvas.width - (trackBounds.maxX - trackBounds.minX) * scale) / 2;
-                const y = (driver.y - trackBounds.minY) * scale + (canvas.height - (trackBounds.maxY - trackBounds.minY) * scale) / 2;
+                const x = transformX(driver.x);
+                const y = transformY(driver.y);
+                
+                const isSelected = selectedDriver === driver.code;
+                
+                // Draw larger circle for selected driver
+                if (isSelected) {
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 14, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
                 
                 // Draw driver dot
                 ctx.fillStyle = driver.is_out ? '#666' : driver.color;
                 ctx.beginPath();
-                ctx.arc(x, y, 8, 0, Math.PI * 2);
+                ctx.arc(x, y, isSelected ? 10 : 8, 0, Math.PI * 2);
                 ctx.fill();
                 
                 // Draw driver code
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 10px sans-serif';
+                ctx.fillStyle = isSelected ? '#ffff00' : 'white';
+                ctx.font = isSelected ? 'bold 12px sans-serif' : 'bold 10px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(driver.code, x, y + 20);
+                ctx.fillText(driver.code, x, y + (isSelected ? 25 : 20));
             });
         }
 
@@ -323,8 +440,17 @@
             // Sort by position
             const sorted = [...drivers].sort((a, b) => a.position - b.position);
             
+            // Update lap info
+            if (sorted.length > 0) {
+                const leader = sorted[0];
+                currentLap = leader.lap;
+                document.getElementById('lapInfo').textContent = `Lap ${currentLap} / ${totalLaps || '?'}`;
+            }
+            
             content.innerHTML = sorted.map(driver => `
-                <div class="driver-row ${driver.is_out ? 'out' : ''}" style="border-left-color: ${driver.color}">
+                <div class="driver-row ${driver.is_out ? 'out' : ''} ${selectedDriver === driver.code ? 'selected' : ''}" 
+                     style="border-left-color: ${driver.color}"
+                     onclick="selectDriver('${driver.code}')">
                     <span class="position">${driver.position}</span>
                     <span class="driver-code">${driver.code}</span>
                     <span class="driver-info">
@@ -333,6 +459,59 @@
                     </span>
                 </div>
             `).join('');
+        }
+        
+        function selectDriver(code) {
+            if (selectedDriver === code) {
+                selectedDriver = null;
+                document.getElementById('telemetryPanel').style.display = 'none';
+            } else {
+                selectedDriver = code;
+                updateTelemetry();
+                document.getElementById('telemetryPanel').style.display = 'block';
+            }
+            drawFrame();
+        }
+        
+        function updateTelemetry() {
+            if (!selectedDriver) return;
+            
+            const driver = drivers.find(d => d.code === selectedDriver);
+            if (!driver) return;
+            
+            const content = document.getElementById('telemetryContent');
+            const throttlePercent = 100; // Would need real data
+            const brakePercent = 0; // Would need real data
+            
+            content.innerHTML = `
+                <div class="telemetry-driver-header">
+                    <div style="width: 20px; height: 20px; background: ${driver.color}; border-radius: 50%;"></div>
+                    <div class="telemetry-driver-code">${driver.code}</div>
+                </div>
+                
+                <div class="telemetry-stat">
+                    <span class="stat-label">Speed</span>
+                    <span class="stat-value">${Math.round(driver.speed)} km/h</span>
+                </div>
+                <div class="stat-bar">
+                    <div class="stat-bar-fill" style="width: ${(driver.speed / 350) * 100}%"></div>
+                </div>
+                
+                <div class="telemetry-stat">
+                    <span class="stat-label">Position</span>
+                    <span class="stat-value">P${driver.position}</span>
+                </div>
+                
+                <div class="telemetry-stat">
+                    <span class="stat-label">Lap</span>
+                    <span class="stat-value">${driver.lap}</span>
+                </div>
+                
+                <div class="telemetry-stat">
+                    <span class="stat-label">Status</span>
+                    <span class="stat-value">${driver.is_out ? '❌ OUT' : '✅ Racing'}</span>
+                </div>
+            `;
         }
 
         function updateProgress() {

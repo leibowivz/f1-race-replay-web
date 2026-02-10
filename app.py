@@ -97,8 +97,15 @@ def load_race():
         current_replay['total_frames'] = total_frames
         current_replay['is_playing'] = False
         
+        # Get total laps if available
+        total_laps = telemetry.get('total_laps', 0)
+        
         # Emit first frame to show initial state
-        socketio.emit('initial_load_complete', {'total_frames': total_frames})
+        socketio.emit('initial_load_complete', {
+            'total_frames': total_frames,
+            'event_name': str(session.event['EventName']),
+            'total_laps': int(total_laps) if total_laps else 0
+        })
         
         # Get driver info from first frame
         drivers_info = []
@@ -211,6 +218,17 @@ def emit_current_frame():
         'time': float(frame.get('t', 0)),
         'drivers': drivers_list
     }
+    
+    # Add weather data if available
+    if 'weather' in frame:
+        weather = frame['weather']
+        frame_data['weather'] = {
+            'track_temp': float(weather.get('track_temp', 0)) if weather.get('track_temp') else None,
+            'air_temp': float(weather.get('air_temp', 0)) if weather.get('air_temp') else None,
+            'humidity': float(weather.get('humidity', 0)) if weather.get('humidity') else None,
+            'wind_speed': float(weather.get('wind_speed', 0)) if weather.get('wind_speed') else None,
+            'rain_state': str(weather.get('rain_state', 'DRY'))
+        }
     
     socketio.emit('frame_update', frame_data)
 

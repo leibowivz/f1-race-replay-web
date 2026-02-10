@@ -1,0 +1,131 @@
+/* Enhanced F1 Viewer Styles */
+
+.weather-panel {
+    background: #2a2a2a;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.weather-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.weather-item {
+    background: #333;
+    padding: 8px;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.weather-label {
+    font-size: 0.75em;
+    color: #aaa;
+    display: block;
+}
+
+.weather-value {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #667eea;
+    display: block;
+    margin-top: 3px;
+}
+
+.telemetry-panel {
+    background: #2a2a2a;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.telemetry-driver-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #333;
+    border-radius: 5px;
+}
+
+.telemetry-driver-code {
+    font-size: 1.2em;
+    font-weight: 700;
+    margin-left: 10px;
+}
+
+.telemetry-stat {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #333;
+}
+
+.telemetry-stat:last-child {
+    border-bottom: none;
+}
+
+.stat-label {
+    color: #aaa;
+}
+
+.stat-value {
+    font-weight: 600;
+    color: white;
+}
+
+.stat-bar {
+    height: 8px;
+    background: #333;
+    border-radius: 4px;
+    margin-top: 5px;
+    overflow: hidden;
+}
+
+.stat-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    transition: width 0.1s;
+}
+
+.driver-row.selected {
+    background: #667eea !important;
+    cursor: pointer;
+}
+
+.driver-row {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.driver-row:hover {
+    background: #444 !important;
+}
+
+#raceInfo {
+    background: #2a2a2a;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+#raceInfo h3 {
+    color: #667eea;
+    margin-bottom: 5px;
+}
+
+#raceInfo .event-name {
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+#raceInfo .lap-info {
+    color: #aaa;
+    margin-top: 10px;
+}
