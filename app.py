@@ -97,6 +97,9 @@ def load_race():
         current_replay['total_frames'] = total_frames
         current_replay['is_playing'] = False
         
+        # Emit first frame to show initial state
+        socketio.emit('initial_load_complete', {'total_frames': total_frames})
+        
         # Get driver info from first frame
         drivers_info = []
         if frames and len(frames) > 0 and 'drivers' in frames[0]:

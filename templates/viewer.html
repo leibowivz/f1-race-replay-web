@@ -209,6 +209,8 @@
 
         socket.on('connect', () => {
             console.log('Connected to server');
+            // Request initial frame on connect
+            socket.emit('seek', { frame: 0 });
         });
 
         socket.on('frame_update', (data) => {
@@ -250,6 +252,13 @@
         socket.on('replay_ended', () => {
             isPlaying = false;
             document.getElementById('playBtn').textContent = '▶️ Play';
+        });
+
+        socket.on('initial_load_complete', (data) => {
+            console.log('Race loaded, total frames:', data.total_frames);
+            totalFrames = data.total_frames;
+            // Request first frame
+            socket.emit('seek', { frame: 0 });
         });
 
         function drawFrame() {
