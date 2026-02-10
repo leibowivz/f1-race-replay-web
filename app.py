@@ -99,6 +99,14 @@ def load_race():
         
         # Extract frames and calculate total
         frames = telemetry.get('frames', [])
+        
+        # TEMP FIX: Limit to first 10 minutes to prevent memory overload
+        # 25 FPS * 60 sec * 10 min = 15,000 frames max
+        max_frames = 15000
+        if len(frames) > max_frames:
+            print(f"⚠️ Limiting frames: {len(frames)} → {max_frames} (first 10 minutes)")
+            frames = frames[:max_frames]
+        
         total_frames = len(frames)
         
         # Store in global state
@@ -161,17 +169,34 @@ def handle_disconnect():
 @socketio.on('play')
 def handle_play():
     """Start race replay"""
-    print("Play requested")
-    print(f"Current state: frames={len(current_replay.get('frames', []))}, total={current_replay.get('total_frames', 0)}")
+    print("=" * 50)
+    print("▶️ PLAY REQUESTED")
+    print(f"   Frames loaded: {len(current_replay.get('frames', []))}")
+    print(f"   Total frames: {current_replay.get('total_frames', 0)}")
+    print(f"   Current index: {current_replay.get('frame_index', 0)}")
+    print(f"   Already playing: {current_replay.get('is_playing', False)}")
     
     if not current_replay.get('frames'):
-        print("ERROR: No frames loaded!")
+        print("❌ ERROR: No frames loaded!")
         socketio.emit('error', {'message': 'No race data loaded'})
         return
     
+    if current_replay.get('is_playing'):
+        print("⚠️ Already playing, ignoring")
+        return
+    
     current_replay['is_playing'] = True
-    threading.Thread(target=replay_loop, daemon=True).start()
-    print("Replay thread started")
+    print("🚀 Starting replay thread...")
+    
+    try:
+        thread = threading.Thread(target=replay_loop, daemon=True)
+        thread.start()
+        print("✅ Replay thread started successfully")
+        print("=" * 50)
+    except Exception as e:
+        print(f"❌ Failed to start thread: {e}")
+        import traceback
+        traceback.print_exc()
 
 @socketio.on('pause')
 def handle_pause():
