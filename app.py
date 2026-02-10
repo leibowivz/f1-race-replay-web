@@ -89,6 +89,8 @@ def extract_race_events(frames, track_statuses, total_laps):
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'f1-race-replay-secret'
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.jinja_env.auto_reload = True
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Global state for race replay
